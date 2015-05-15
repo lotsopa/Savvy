@@ -23,7 +23,7 @@ N.B: You can check if your IDE is supported by Premake 5 using the link above.
 After you've opened the solution, you should see three projects: Sample, Savvy and Savvy Standalone.
 
 ## Sample
-The Sample is a project which shows different uses of of the Savvy library and demonstrates how ot extend it.
+The Sample is a project which shows different uses of of the Savvy library and demonstrates how to extend it.
 
 ## Savvy
 This is the bread and butter of the tool. This project contains all the Savvy functionality and implementation of the converters.
