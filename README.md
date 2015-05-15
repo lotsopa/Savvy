@@ -30,3 +30,8 @@ This is the bread and butter of the tool. This project contains all the Savvy fu
 
 ## Savvy Standalone
 This project is the standalone version of the tool. It is a simple console application which provides an out of the box functionality for anyone to convert shaders between GLSL and HLSL.
+
+# More Documentation and Tutorials Coming Soon
+In the meantime, if you have any questions/suggestions you can always contact me at: 
+
+apostol_dadachev[at]yahoo.com or Twitter: @ApostolDadachev
