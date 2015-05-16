@@ -1111,7 +1111,15 @@ const bool Savvy::Internal::ConstructorHLSLToGLSL::HandleBuiltInSemantic(Key& a_
 	}
 	else if (a_Name == "SV_Position" || a_Name == "SV_POSITION")
 	{
-		std::string newVar = "gl_Position";
+		std::string newVar;
+		if (m_CurrShader == FRAGMENT_SHADER)
+		{
+			newVar = "gl_FragCoord";
+		}
+		else
+		{
+			newVar = "gl_Position";
+		}
 		std::string oldVarName = a_VarName.GetString();
 		//ReplaceVarName(oldVarName, newVar);
 		if (a_Rename)
@@ -1302,10 +1310,21 @@ Savvy::ResultCode Savvy::Internal::ConstructorHLSLToGLSL::RemoveExtraFuncArgs( K
 			{
 				instructionIt->second.m_Name.Clear();
 				instructionIt++;
-				// Check if we renamed this one
-				while (!m_Database->StructVariableExists(m_InputStructName, instructionIt->second.m_Name))
+				// Check if it's a built-in variable
+				Key& name = instructionIt->second.m_Name;
+				if (m_Database->StructVariableExists(m_InputStructName, name))
 				{
-					instructionIt->second.m_Name.SetString("in_" + instructionIt->second.m_Name.GetString());
+					Key semantic = m_Database->GetSemantic(m_InputStructName, name);
+					bool handled = HandleBuiltInSemantic(semantic, name, true);
+
+					if (!handled)
+					{
+						// Check if we renamed this one
+						while (!m_Database->StructVariableExists(m_InputStructName, instructionIt->second.m_Name))
+						{
+							instructionIt->second.m_Name.SetString("out_" + instructionIt->second.m_Name.GetString());
+						}
+					}
 				}
 			}
 		}
