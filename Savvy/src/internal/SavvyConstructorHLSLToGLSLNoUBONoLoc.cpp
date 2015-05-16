@@ -391,7 +391,7 @@ Savvy::ResultCode Savvy::Internal::ConstructorHLSLToGLSLNoUBONoLoc::ConstructGen
 					}
 				}
 				a_OutputStream << genericIt1->second.m_Name.GetString();
-				a_OutputStream << ";";
+				a_OutputStream << "[];";
 				a_OutputStream << std::endl;
 				++genericIt1;
 			}
