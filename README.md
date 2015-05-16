@@ -13,9 +13,7 @@ Savvy uses Premake 5 (You can find it here: https://premake.github.io/) to gener
 
 3. Use Command Prompt (or Terminal) to navigate to the root Savvy folder on your computer.
 
-4. Execute the command, without the quotes: "premake5 Your_IDE_Name" (For example: "premake5 vs2013" for Visual Studio 2013 IDE)
-
-N.B: You can check if your IDE is supported by Premake 5 using the link above.
+4. Execute the command, without the quotes: "premake5 Your_IDE_Name" (For example: "premake5 vs2013" for Visual Studio 2013 IDE)N.B: You can check if your IDE is supported by Premake 5 using the link above.
 
 5. Open the Solution in your favourite IDE and press the compile button.
 
