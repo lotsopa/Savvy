@@ -22,6 +22,7 @@ namespace SavvyEditor
 	private:
 		void OnFileOpen(wxCommandEvent& event);
 		void OnFileNew(wxCommandEvent& event);
+		void OnFileSave(wxCommandEvent& event);
 		void OnExit(wxCommandEvent& event);
 		void OnAbout(wxCommandEvent& event);
 		wxDECLARE_EVENT_TABLE();
@@ -29,6 +30,8 @@ namespace SavvyEditor
 		wxMenu* m_FileMenu;
 		wxMenu* m_HelpMenu;
 		wxMenuBar* m_MenuBar;
+		wxTextCtrl* m_TextArea; // the main text area
+
 	};
 }
 
