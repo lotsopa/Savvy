@@ -7,10 +7,11 @@ EVT_MENU(wxID_ABOUT, SavvyEditor::AppFrame::OnAbout)
 EVT_MENU(wxID_OPEN, SavvyEditor::AppFrame::OnFileOpen)
 EVT_MENU(wxID_NEW, SavvyEditor::AppFrame::OnFileNew)
 EVT_MENU(wxID_SAVE, SavvyEditor::AppFrame::OnFileSave)
+EVT_SIZE(SavvyEditor::AppFrame::OnResize)
 wxEND_EVENT_TABLE()
 
 SavvyEditor::AppFrame::AppFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
-: wxFrame(NULL, wxID_ANY, title, pos, size)
+: wxFrame(NULL, wxID_ANY, title, pos, size), m_TextAreaUser(NULL)
 {
 	// Construct the File menu options
 	m_FileMenu = new wxMenu();
@@ -29,8 +30,6 @@ SavvyEditor::AppFrame::AppFrame(const wxString& title, const wxPoint& pos, const
 	m_MenuBar->Append(m_HelpMenu, "&Help");
 	SetMenuBar(m_MenuBar);
 
-	// Create the text area
-	m_TextArea = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER | wxTE_MULTILINE);
 	// Create a status bar on the bottom
 	CreateStatusBar();
 	SetStatusText("Welcome to Savvy Editor!");
@@ -65,25 +64,43 @@ void SavvyEditor::AppFrame::OnFileOpen(wxCommandEvent& event)
 	// If everything went well, open the file
 	if (response == wxID_OK) 
 	{
-		m_TextArea->LoadFile(openDialog->GetPath());
+		CreateMainTextArea();
+		m_TextAreaUser->LoadFile(openDialog->GetPath());
 	}
 }
 
 void SavvyEditor::AppFrame::OnFileNew(wxCommandEvent& event)
 {
-	wxMessageBox("TODO",
-		"TODO", wxOK | wxICON_INFORMATION);
+	CreateMainTextArea();
 }
 
 void SavvyEditor::AppFrame::OnFileSave(wxCommandEvent& event)
 {
-	wxFileDialog *saveDialog = new wxFileDialog(this, "Save File~", "", "", "Text Files (*.txt)|*.txt|C++ Files (*.cpp)|*.cpp", wxFD_SAVE);
+	wxFileDialog* saveDialog = new wxFileDialog(this, "Save File~", "", "", "Text Files (*.txt)|*.txt|C++ Files (*.cpp)|*.cpp|GLSL Files (*.glsl)|*.glsl|HLSL Files (*.hlsl)|*.hlsl", wxFD_SAVE);
 	int response = saveDialog->ShowModal();
 
 	// If everything went well, save the file
-	if (response == wxID_OK) 
+	if (response == wxID_OK)
 	{
-		m_TextArea->SaveFile(saveDialog->GetPath());
+		m_TextAreaUser->SaveFile(saveDialog->GetPath());
 	}
 
+}
+
+void SavvyEditor::AppFrame::CreateMainTextArea()
+{
+	// Create the text area
+	wxSize areaSize = GetClientSize();
+	areaSize.SetWidth(areaSize.GetWidth() / 2);
+	m_TextAreaUser = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, areaSize, wxTE_PROCESS_ENTER | wxTE_MULTILINE);
+}
+
+void SavvyEditor::AppFrame::OnResize(wxSizeEvent& event)
+{
+	if (m_TextAreaUser)
+	{
+		wxSize areaSize = GetClientSize();
+		areaSize.SetWidth(areaSize.GetWidth() / 2);
+		m_TextAreaUser->SetSize(areaSize);
+	}
 }
