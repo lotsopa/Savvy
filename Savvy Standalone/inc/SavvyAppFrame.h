@@ -1,6 +1,9 @@
 #ifndef SAVVY_APP_FRAME_H
 #define SAVVY_APP_FRAME_H
 
+#define DEFAULT_DOC_PATH "C:/"
+#define DEFAULT_FRAME_TITLE "Savvy Editor"
+
 #include "SavvyIncludes.h"
 
 namespace SavvyEditor
@@ -23,7 +26,9 @@ namespace SavvyEditor
 		void OnFileOpen(wxCommandEvent& event);
 		void OnFileNew(wxCommandEvent& event);
 		void OnFileSave(wxCommandEvent& event);
+		void OnFileSaveAs(wxCommandEvent& event);
 		void OnExit(wxCommandEvent& event);
+		void OnFileClose(wxCommandEvent& event);
 		void OnAbout(wxCommandEvent& event);
 		void OnResize(wxSizeEvent& event);
 		wxDECLARE_EVENT_TABLE();
@@ -32,6 +37,7 @@ namespace SavvyEditor
 		wxMenu* m_HelpMenu;
 		wxMenuBar* m_MenuBar;
 		wxTextCtrl* m_TextAreaUser; // the main text area
+		wxString m_CurrDocPath;
 
 		void CreateMainTextArea();
 	};

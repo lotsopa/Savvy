@@ -7,18 +7,25 @@ EVT_MENU(wxID_ABOUT, SavvyEditor::AppFrame::OnAbout)
 EVT_MENU(wxID_OPEN, SavvyEditor::AppFrame::OnFileOpen)
 EVT_MENU(wxID_NEW, SavvyEditor::AppFrame::OnFileNew)
 EVT_MENU(wxID_SAVE, SavvyEditor::AppFrame::OnFileSave)
+EVT_MENU(wxID_SAVEAS, SavvyEditor::AppFrame::OnFileSaveAs)
+EVT_MENU(wxID_CLOSE, SavvyEditor::AppFrame::OnFileClose)
 EVT_SIZE(SavvyEditor::AppFrame::OnResize)
 wxEND_EVENT_TABLE()
 
 SavvyEditor::AppFrame::AppFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 : wxFrame(NULL, wxID_ANY, title, pos, size), m_TextAreaUser(NULL)
 {
+	// Reset the current File being edited
+	m_CurrDocPath = DEFAULT_DOC_PATH;
+
 	// Construct the File menu options
 	m_FileMenu = new wxMenu();
 	m_FileMenu->Append(wxID_NEW, "&New\tCtrl+N", "Create a new file");
-	m_FileMenu->Append(wxID_OPEN, "&Open...\tCtrl+O", "Open a file");
-	m_FileMenu->Append(wxID_SAVE, "Save\tCtrl+S", "Save File");
-	m_FileMenu->Append(wxID_EXIT, "Exit\tCtrl+F4", "Exit Savvy Editor");
+	m_FileMenu->Append(wxID_OPEN, "&Open\tCtrl+O", "Open a file");
+	m_FileMenu->Append(wxID_SAVE, "&Save\tCtrl+S", "Save current file to disk...");
+	m_FileMenu->Append(wxID_SAVEAS, "Save &As\tCtrl+Alt+S", "Save current file to disk as...");
+	m_FileMenu->Append(wxID_CLOSE, "&Close\tCtrl+W", "Close the current file");
+	m_FileMenu->Append(wxID_EXIT, "&Quit\tAlt+F4", "Quit Savvy Editor");
 
 	// Help Menu
 	m_HelpMenu = new wxMenu();
@@ -66,15 +73,35 @@ void SavvyEditor::AppFrame::OnFileOpen(wxCommandEvent& event)
 	{
 		CreateMainTextArea();
 		m_TextAreaUser->LoadFile(openDialog->GetPath());
+		m_CurrDocPath = openDialog->GetPath();
+		SetTitle(openDialog->GetFilename()+ " - "DEFAULT_FRAME_TITLE);
 	}
+	openDialog->Destroy();
 }
 
 void SavvyEditor::AppFrame::OnFileNew(wxCommandEvent& event)
 {
 	CreateMainTextArea();
+
+	// Set the Title to reflect the file open
+	SetTitle("Untitled * - "DEFAULT_FRAME_TITLE);
 }
 
 void SavvyEditor::AppFrame::OnFileSave(wxCommandEvent& event)
+{
+	if (m_CurrDocPath != DEFAULT_DOC_PATH)
+	{
+		// Save to the already-set path for the document
+		m_TextAreaUser->SaveFile(m_CurrDocPath);
+	}
+	else
+	{
+		// Fall-back if the file hasn't been saved before, use Save As
+		OnFileSaveAs(event);
+	}
+}
+
+void SavvyEditor::AppFrame::OnFileSaveAs(wxCommandEvent& event)
 {
 	wxFileDialog* saveDialog = new wxFileDialog(this, "Save File~", "", "", "Text Files (*.txt)|*.txt|C++ Files (*.cpp)|*.cpp|GLSL Files (*.glsl)|*.glsl|HLSL Files (*.hlsl)|*.hlsl", wxFD_SAVE);
 	int response = saveDialog->ShowModal();
@@ -83,8 +110,20 @@ void SavvyEditor::AppFrame::OnFileSave(wxCommandEvent& event)
 	if (response == wxID_OK)
 	{
 		m_TextAreaUser->SaveFile(saveDialog->GetPath());
+		m_CurrDocPath = saveDialog->GetPath();
+		SetTitle(m_CurrDocPath + " - "DEFAULT_FRAME_TITLE);
 	}
+	saveDialog->Destroy();
+}
 
+void SavvyEditor::AppFrame::OnFileClose(wxCommandEvent& event)
+{
+	// Clear the Text Box
+	m_TextAreaUser->Clear();
+	// Reset the current File being edited
+	m_CurrDocPath = DEFAULT_DOC_PATH;
+	// Set the Title to reflect the file open
+	SetTitle("Untitled * - "DEFAULT_FRAME_TITLE);
 }
 
 void SavvyEditor::AppFrame::CreateMainTextArea()

@@ -19,7 +19,7 @@ SavvyEditor::Application::~Application()
 
 bool SavvyEditor::Application::OnInit()
 {
-	m_AppFrame = new AppFrame("Savvy Editor", wxPoint(50, 50), wxSize(DEFAULT_APP_WIDTH, DEFAULT_APP_HEIGHT));
+	m_AppFrame = new AppFrame(DEFAULT_FRAME_TITLE, wxPoint(50, 50), wxSize(DEFAULT_APP_WIDTH, DEFAULT_APP_HEIGHT));
 	m_AppFrame->Show(true);
 	return true;
 }
