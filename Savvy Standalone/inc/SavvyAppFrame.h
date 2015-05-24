@@ -12,6 +12,7 @@ namespace SavvyEditor
 	{
 	public:
 		AppFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
+		virtual ~AppFrame();
 
 		enum OptionID
 		{
@@ -19,10 +20,15 @@ namespace SavvyEditor
 		};
 
 	private:
-		void OnHello(wxCommandEvent& event);
+		void OnFileOpen(wxCommandEvent& event);
+		void OnFileNew(wxCommandEvent& event);
 		void OnExit(wxCommandEvent& event);
 		void OnAbout(wxCommandEvent& event);
 		wxDECLARE_EVENT_TABLE();
+
+		wxMenu* m_FileMenu;
+		wxMenu* m_HelpMenu;
+		wxMenuBar* m_MenuBar;
 	};
 }
 

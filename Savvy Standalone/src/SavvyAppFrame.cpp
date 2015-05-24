@@ -2,27 +2,39 @@
 
 // Register all events for this frame
 wxBEGIN_EVENT_TABLE(SavvyEditor::AppFrame, wxFrame)
-EVT_MENU(SavvyEditor::AppFrame::ID_Hello, SavvyEditor::AppFrame::OnHello)
 EVT_MENU(wxID_EXIT, SavvyEditor::AppFrame::OnExit)
 EVT_MENU(wxID_ABOUT, SavvyEditor::AppFrame::OnAbout)
+EVT_MENU(wxID_OPEN, SavvyEditor::AppFrame::OnFileOpen)
+EVT_MENU(wxID_NEW, SavvyEditor::AppFrame::OnFileNew)
 wxEND_EVENT_TABLE()
 
 SavvyEditor::AppFrame::AppFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 : wxFrame(NULL, wxID_ANY, title, pos, size)
 {
-	wxMenu *menuFile = new wxMenu;
-	menuFile->Append(ID_Hello, "&Hello...\tCtrl-H",
-		"Help string shown in status bar for this menu item");
-	menuFile->AppendSeparator();
-	menuFile->Append(wxID_EXIT);
-	wxMenu *menuHelp = new wxMenu;
-	menuHelp->Append(wxID_ABOUT);
-	wxMenuBar *menuBar = new wxMenuBar;
-	menuBar->Append(menuFile, "&File");
-	menuBar->Append(menuHelp, "&Help");
-	SetMenuBar(menuBar);
+	// Construct the File menu options
+	m_FileMenu = new wxMenu();
+	m_FileMenu->Append(wxID_NEW, "&New\tCtrl+N", "Create a new file");
+	m_FileMenu->Append(wxID_OPEN, "&Open...\tCtrl+O", "Open a file");
+	m_FileMenu->Append(wxID_EXIT, "Exit", "Exit Savvy Editor");
+
+	// Help Menu
+	m_HelpMenu = new wxMenu();
+	m_HelpMenu->Append(wxID_ABOUT);
+
+	// Create the toolbar that's going to contain the menus
+	m_MenuBar = new wxMenuBar();
+	m_MenuBar->Append(m_FileMenu, "&File");
+	m_MenuBar->Append(m_HelpMenu, "&Help");
+	SetMenuBar(m_MenuBar);
+
+	// Create a status bar on the bottom
 	CreateStatusBar();
-	SetStatusText("Welcome to wxWidgets!");
+	SetStatusText("Welcome to Savvy Editor!");
+}
+
+SavvyEditor::AppFrame::~AppFrame()
+{
+
 }
 
 void SavvyEditor::AppFrame::OnExit(wxCommandEvent& event)
@@ -32,11 +44,18 @@ void SavvyEditor::AppFrame::OnExit(wxCommandEvent& event)
 
 void SavvyEditor::AppFrame::OnAbout(wxCommandEvent& event)
 {
-	wxMessageBox("This is a wxWidgets' Hello world sample",
-		"About Hello World", wxOK | wxICON_INFORMATION);
+	wxMessageBox("Savvy Editor\nVersion: 2.0\nAuthor: Apostol Dadachev",
+		"About Savvy Editor", wxOK | wxICON_INFORMATION);
 }
 
-void SavvyEditor::AppFrame::OnHello(wxCommandEvent& event)
+void SavvyEditor::AppFrame::OnFileOpen(wxCommandEvent& event)
 {
-	wxLogMessage("Hello world from wxWidgets!");
+	wxMessageBox("TODO",
+		"TODO", wxOK | wxICON_INFORMATION);
+}
+
+void SavvyEditor::AppFrame::OnFileNew(wxCommandEvent& event)
+{
+	wxMessageBox("TODO",
+		"TODO", wxOK | wxICON_INFORMATION);
 }

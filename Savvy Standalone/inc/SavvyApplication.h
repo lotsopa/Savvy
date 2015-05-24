@@ -5,6 +5,8 @@
 
 namespace SavvyEditor
 {
+	class AppFrame;
+
 	/*
 	Represents the top level application class.
 	*/
@@ -14,6 +16,9 @@ namespace SavvyEditor
 		Application();
 		virtual ~Application();
 		virtual bool OnInit();
+
+	private:
+		AppFrame* m_AppFrame;
 	};
 }
 
