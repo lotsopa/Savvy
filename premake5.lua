@@ -44,10 +44,11 @@ project "Sample"
 -- Savvy Standalone Project
 project "Savvy Standalone"
 	location "Savvy Standalone"
-	kind "ConsoleApp"
+	kind "WindowedApp"
 	language "C++"
 	links { "Savvy" }
-	includedirs { "Savvy/inc" }
+	includedirs { "Savvy/inc", "Savvy Standalone/inc", "ext/wxWidgets/include", "ext/wxWidgets/include/msvc" }
+	libdirs { "ext/wxWidgets/lib/vc_lib" }
 	targetdir "Savvy Standalone/bin/%{cfg.buildcfg}"
 	debugdir "Savvy Standalone/bin/%{cfg.buildcfg}"
 	
@@ -55,9 +56,9 @@ project "Savvy Standalone"
 
 	filter "configurations:Debug"
 		defines { "DEBUG" }
-		flags { "Symbols" }
+		flags { "Symbols", "Unicode", "WinMain" }
 
 	filter "configurations:Release"
 		defines { "NDEBUG" }
 		optimize "On"
-		flags { "Symbols" }
+		flags { "Symbols", "Unicode", "WinMain" }
