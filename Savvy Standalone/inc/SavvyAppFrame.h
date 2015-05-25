@@ -14,27 +14,37 @@ namespace SavvyEditor
 	class AppFrame : public wxFrame
 	{
 	public:
-		AppFrame(const wxString& title, const wxPoint& pos, const wxSize& size);
+		AppFrame(const wxString& a_Title, const wxPoint& a_Pos, const wxSize& a_Size);
 		virtual ~AppFrame();
 
 		enum OptionID
 		{
-			ID_Hello = 1
+			ID_Convert = 1,
+			ID_TextAreaUser
 		};
 
 	private:
-		void OnFileOpen(wxCommandEvent& event);
-		void OnFileNew(wxCommandEvent& event);
-		void OnFileSave(wxCommandEvent& event);
-		void OnFileSaveAs(wxCommandEvent& event);
-		void OnExit(wxCommandEvent& event);
-		void OnFileClose(wxCommandEvent& event);
-		void OnAbout(wxCommandEvent& event);
-		void OnResize(wxSizeEvent& event);
+		void OnFileOpen(wxCommandEvent& a_Event);
+		void OnFileNew(wxCommandEvent& a_Event);
+		void OnFileSave(wxCommandEvent& a_Event);
+		void OnFileSaveAs(wxCommandEvent& a_Event);
+		void OnExit(wxCommandEvent& a_Event);
+		void OnFileClose(wxCommandEvent& a_Event);
+		void OnAbout(wxCommandEvent& a_Event);
+		void OnUndo(wxCommandEvent& a_Event);
+		void OnRedo(wxCommandEvent& a_Event);
+		void OnCut(wxCommandEvent& a_Event);
+		void OnCopy(wxCommandEvent& a_Event);
+		void OnPaste(wxCommandEvent& a_Event);
+		void OnDelete(wxCommandEvent& a_Event);
+		void OnSelectAll(wxCommandEvent& a_Event);
+		void OnTextChanged(wxCommandEvent& a_Event);
+		void OnResize(wxSizeEvent& a_Event);
 		wxDECLARE_EVENT_TABLE();
 
 		wxMenu* m_FileMenu;
 		wxMenu* m_HelpMenu;
+		wxMenu* m_EditMenu;
 		wxMenuBar* m_MenuBar;
 		wxTextCtrl* m_TextAreaUser; // the main text area
 		wxString m_CurrDocPath;
