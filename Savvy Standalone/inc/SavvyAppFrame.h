@@ -52,6 +52,9 @@ namespace SavvyEditor
 		wxMenuBar* m_MenuBar;
 		wxStyledTextCtrl* m_TextAreaUser; // the main text area
 		wxString m_CurrDocPath;
+		int m_TextAreaMargin;
+		int m_TextAreaWidth;
+		int m_TextAreaType;
 
 		void CreateMainTextArea();
 	};

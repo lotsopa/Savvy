@@ -23,7 +23,8 @@ EVT_MENU_OPEN(SavvyEditor::AppFrame::OnMenuOpen)
 wxEND_EVENT_TABLE()
 
 SavvyEditor::AppFrame::AppFrame(const wxString& a_Title, const wxPoint& a_Pos, const wxSize& a_Size)
-: wxFrame(NULL, wxID_ANY, a_Title, a_Pos, a_Size), m_TextAreaUser(NULL)
+: wxFrame(NULL, wxID_ANY, a_Title, a_Pos, a_Size), m_TextAreaUser(NULL), m_TextAreaMargin(0), m_TextAreaWidth(30),
+m_TextAreaType(1)
 {
 	// Reset the current File being edited
 	m_CurrDocPath = DEFAULT_DOC_PATH;
@@ -162,6 +163,11 @@ void SavvyEditor::AppFrame::CreateMainTextArea()
 	wxSize areaSize = GetClientSize();
 	areaSize.SetWidth(areaSize.GetWidth() / 2);
 	m_TextAreaUser = new wxStyledTextCtrl(this, ID_TextAreaUser, wxDefaultPosition, areaSize, wxTE_PROCESS_ENTER | wxTE_MULTILINE);
+	
+	// Set up the margins for the line numbers
+	m_TextAreaUser->SetMarginWidth(m_TextAreaMargin, m_TextAreaWidth);
+	m_TextAreaUser->SetMarginType(m_TextAreaMargin, m_TextAreaType);
+
 	SetTitle("Untitled* - "DEFAULT_FRAME_TITLE);
 }
 
