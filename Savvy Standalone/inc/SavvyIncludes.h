@@ -8,6 +8,7 @@ Contains generic include files needed all across the project.
 #include <wx/wx.h>
 #endif
 #include <wx/stc/stc.h>
+#include <wx/splash.h>
 
 // Include our cross-compiler library
 #include "Savvy.h"

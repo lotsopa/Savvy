@@ -26,6 +26,9 @@ SavvyEditor::AppFrame::AppFrame(const wxString& a_Title, const wxPoint& a_Pos, c
 : wxFrame(NULL, wxID_ANY, a_Title, a_Pos, a_Size), m_TextAreaUser(NULL), m_TextAreaMargin(0), m_TextAreaWidth(30),
 m_TextAreaType(1)
 {
+	// Center on screen
+	Centre();
+
 	// Reset the current File being edited
 	m_CurrDocPath = DEFAULT_DOC_PATH;
 

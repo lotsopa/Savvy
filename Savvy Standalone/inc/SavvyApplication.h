@@ -17,8 +17,17 @@ namespace SavvyEditor
 		virtual ~Application();
 		virtual bool OnInit();
 
+		enum OptionID
+		{
+			ID_Timer = 1
+		};
+
 	private:
+		void OnTimer(wxTimerEvent& a_Event);
+		wxDECLARE_EVENT_TABLE();
 		AppFrame* m_AppFrame;
+		wxSplashScreen* m_SplashScreen;
+		wxTimer m_SplashTimer;
 	};
 }
 

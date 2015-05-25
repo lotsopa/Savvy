@@ -51,6 +51,7 @@ namespace SavvyEditor
 		wxMenu* m_ConvertMenu;
 		wxMenuBar* m_MenuBar;
 		wxStyledTextCtrl* m_TextAreaUser; // the main text area
+		wxSplashScreen* m_SplashScreen;
 		wxString m_CurrDocPath;
 		int m_TextAreaMargin;
 		int m_TextAreaWidth;
