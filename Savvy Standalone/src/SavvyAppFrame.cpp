@@ -29,6 +29,9 @@ m_TextAreaType(1)
 	// Center on screen
 	Centre();
 
+	// Set an Icon
+	SetIcon(wxIcon(wxT("res/Savvy_Logo.xpm"), wxBITMAP_TYPE_XPM));
+
 	// Reset the current File being edited
 	m_CurrDocPath = DEFAULT_DOC_PATH;
 
@@ -236,6 +239,11 @@ void SavvyEditor::AppFrame::OnConvert(wxCommandEvent& a_Event)
 void SavvyEditor::AppFrame::OnMenuOpen(wxMenuEvent& a_Event)
 {
 	wxMenu* currMenu = a_Event.GetMenu();
+
+	// Fixes a bug when clicking on the icon
+	if (currMenu == NULL)
+		return;
+
 	wxMenuItem* currItem = NULL;
 	if (currMenu->GetTitle() == "&Edit")
 	{
