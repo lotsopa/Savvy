@@ -16,8 +16,10 @@ EVT_MENU(wxID_COPY, SavvyEditor::AppFrame::OnCopy)
 EVT_MENU(wxID_PASTE, SavvyEditor::AppFrame::OnPaste)
 EVT_MENU(wxID_DELETE, SavvyEditor::AppFrame::OnDelete)
 EVT_MENU(wxID_SELECTALL, SavvyEditor::AppFrame::OnSelectAll)
+EVT_MENU(ID_Convert, SavvyEditor::AppFrame::OnConvert)
 EVT_SIZE(SavvyEditor::AppFrame::OnResize)
 EVT_TEXT(ID_TextAreaUser, SavvyEditor::AppFrame::OnTextChanged)
+EVT_MENU_OPEN(SavvyEditor::AppFrame::OnMenuOpen)
 wxEND_EVENT_TABLE()
 
 SavvyEditor::AppFrame::AppFrame(const wxString& a_Title, const wxPoint& a_Pos, const wxSize& a_Size)
@@ -51,10 +53,15 @@ SavvyEditor::AppFrame::AppFrame(const wxString& a_Title, const wxPoint& a_Pos, c
 	m_HelpMenu = new wxMenu();
 	m_HelpMenu->Append(wxID_ABOUT);
 
+	// Convert Menu
+	m_ConvertMenu = new wxMenu();
+	m_ConvertMenu->Append(ID_Convert, "&Convert\tF1", "Brings up the conversion options for the file");
+
 	// Create the toolbar that's going to contain the menus
 	m_MenuBar = new wxMenuBar();
 	m_MenuBar->Append(m_FileMenu, "&File");
 	m_MenuBar->Append(m_EditMenu, "&Edit");
+	m_MenuBar->Append(m_ConvertMenu, "&Conversion");
 	m_MenuBar->Append(m_HelpMenu, "&Help");
 
 	SetMenuBar(m_MenuBar);
@@ -106,7 +113,7 @@ void SavvyEditor::AppFrame::OnFileNew(wxCommandEvent& a_Event)
 {
 	// Set the Title to reflect the file open
 	SetTitle("Untitled* - "DEFAULT_FRAME_TITLE);
-	m_TextAreaUser->Clear();
+	m_TextAreaUser->ClearAll();
 }
 
 void SavvyEditor::AppFrame::OnFileSave(wxCommandEvent& a_Event)
@@ -142,7 +149,7 @@ void SavvyEditor::AppFrame::OnFileSaveAs(wxCommandEvent& a_Event)
 void SavvyEditor::AppFrame::OnFileClose(wxCommandEvent& a_Event)
 {
 	// Clear the Text Box
-	m_TextAreaUser->Clear();
+	m_TextAreaUser->ClearAll();
 	// Reset the current File being edited
 	m_CurrDocPath = DEFAULT_DOC_PATH;
 	// Set the Title to reflect the file open
@@ -154,7 +161,7 @@ void SavvyEditor::AppFrame::CreateMainTextArea()
 	// Create the text area
 	wxSize areaSize = GetClientSize();
 	areaSize.SetWidth(areaSize.GetWidth() / 2);
-	m_TextAreaUser = new wxTextCtrl(this, ID_TextAreaUser, "", wxDefaultPosition, areaSize, wxTE_PROCESS_ENTER | wxTE_MULTILINE);
+	m_TextAreaUser = new wxStyledTextCtrl(this, ID_TextAreaUser, wxDefaultPosition, areaSize, wxTE_PROCESS_ENTER | wxTE_MULTILINE);
 	SetTitle("Untitled* - "DEFAULT_FRAME_TITLE);
 }
 
@@ -209,4 +216,111 @@ void SavvyEditor::AppFrame::OnDelete(wxCommandEvent& a_Event)
 void SavvyEditor::AppFrame::OnSelectAll(wxCommandEvent& a_Event)
 {
 	m_TextAreaUser->SelectAll();
+}
+
+void SavvyEditor::AppFrame::OnConvert(wxCommandEvent& a_Event)
+{
+	wxMessageBox("TODO",
+		"TODO", wxOK | wxICON_INFORMATION);
+}
+
+void SavvyEditor::AppFrame::OnMenuOpen(wxMenuEvent& a_Event)
+{
+	wxMenu* currMenu = a_Event.GetMenu();
+	wxMenuItem* currItem = NULL;
+	if (currMenu->GetTitle() == "&Edit")
+	{
+		// Redo enable/disable
+		if (m_TextAreaUser->CanRedo())
+		{
+			currItem = currMenu->FindItem(wxID_REDO);
+			EnableMenuItem(currItem, true);
+		}
+		else
+		{
+			currItem = currMenu->FindItem(wxID_REDO);
+			EnableMenuItem(currItem, false);
+		}
+
+		// Undo enable/disable
+		if (m_TextAreaUser->CanUndo())
+		{
+			currItem = currMenu->FindItem(wxID_UNDO);
+			EnableMenuItem(currItem, true);
+		}
+		else
+		{
+			currItem = currMenu->FindItem(wxID_UNDO);
+			EnableMenuItem(currItem, false);
+		}
+
+		// Delete enable/disable
+		if (m_TextAreaUser->HasSelection())
+		{
+			currItem = currMenu->FindItem(wxID_DELETE);
+			EnableMenuItem(currItem, true);
+		}
+		else
+		{
+			currItem = currMenu->FindItem(wxID_DELETE);
+			EnableMenuItem(currItem, false);
+		}
+
+		// Copy
+		if (m_TextAreaUser->CanCopy())
+		{
+			currItem = currMenu->FindItem(wxID_COPY);
+			EnableMenuItem(currItem, true);
+		}
+		else
+		{
+			currItem = currMenu->FindItem(wxID_COPY);
+			EnableMenuItem(currItem, false);
+		}
+
+		// Cut
+		if (m_TextAreaUser->CanCut())
+		{
+			currItem = currMenu->FindItem(wxID_CUT);
+			EnableMenuItem(currItem, true);
+		}
+		else
+		{
+			currItem = currMenu->FindItem(wxID_CUT);
+			EnableMenuItem(currItem, false);
+		}
+
+		// Paste
+		if (m_TextAreaUser->CanPaste())
+		{
+			currItem = currMenu->FindItem(wxID_PASTE);
+			EnableMenuItem(currItem, true);
+		}
+		else
+		{
+			currItem = currMenu->FindItem(wxID_PASTE);
+			EnableMenuItem(currItem, false);
+		}
+	}
+	else if (currMenu->GetTitle() == "&File")
+	{
+		if (m_TextAreaUser->IsModified())
+		{
+			currItem = currMenu->FindItem(wxID_SAVE);
+			EnableMenuItem(currItem, true);
+		}
+		else
+		{
+			currItem = currMenu->FindItem(wxID_SAVE);
+			EnableMenuItem(currItem, false);
+		}
+	}
+}
+
+void SavvyEditor::AppFrame::EnableMenuItem(wxMenuItem* a_Item, bool a_Enable)
+{
+	if (a_Item != NULL)
+	{
+		a_Item->Enable(a_Enable);
+	}
 }

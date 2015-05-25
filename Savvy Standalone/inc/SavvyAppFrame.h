@@ -38,15 +38,19 @@ namespace SavvyEditor
 		void OnPaste(wxCommandEvent& a_Event);
 		void OnDelete(wxCommandEvent& a_Event);
 		void OnSelectAll(wxCommandEvent& a_Event);
+		void OnConvert(wxCommandEvent& a_Event);
 		void OnTextChanged(wxCommandEvent& a_Event);
 		void OnResize(wxSizeEvent& a_Event);
+		void OnMenuOpen(wxMenuEvent& a_Event);
+		void EnableMenuItem(wxMenuItem* a_Item, bool a_Enable);
 		wxDECLARE_EVENT_TABLE();
 
 		wxMenu* m_FileMenu;
 		wxMenu* m_HelpMenu;
 		wxMenu* m_EditMenu;
+		wxMenu* m_ConvertMenu;
 		wxMenuBar* m_MenuBar;
-		wxTextCtrl* m_TextAreaUser; // the main text area
+		wxStyledTextCtrl* m_TextAreaUser; // the main text area
 		wxString m_CurrDocPath;
 
 		void CreateMainTextArea();

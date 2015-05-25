@@ -7,6 +7,7 @@ Contains generic include files needed all across the project.
 #ifndef WX_PRECOMP
 #include <wx/wx.h>
 #endif
+#include <wx/stc/stc.h>
 
 // Include our cross-compiler library
 #include "Savvy.h"
