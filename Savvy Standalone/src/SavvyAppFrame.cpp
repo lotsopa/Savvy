@@ -108,7 +108,8 @@ void SavvyEditor::AppFrame::OnFileOpen(wxCommandEvent& a_Event)
 	// If everything went well, open the file
 	if (response == wxID_OK) 
 	{
-		CreateMainTextArea();
+		// Clear the Text Box
+		m_TextAreaUser->ClearAll();
 		m_TextAreaUser->LoadFile(openDialog->GetPath());
 		m_CurrDocPath = openDialog->GetPath();
 		SetTitle(openDialog->GetPath() + " - "DEFAULT_FRAME_TITLE);
