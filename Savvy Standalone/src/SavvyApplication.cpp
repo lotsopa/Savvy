@@ -34,13 +34,13 @@ bool SavvyEditor::Application::OnInit()
 	}
 	wxYield();
 	m_SplashTimer.StartOnce(SPLASH_SCREEN_TIMEOUT_MS);
+	m_AppFrame = new AppFrame(DEFAULT_FRAME_TITLE, wxDefaultPosition, wxSize(DEFAULT_APP_WIDTH, DEFAULT_APP_HEIGHT));
 
 	return true;
 }
 
 void SavvyEditor::Application::OnTimer(wxTimerEvent& a_Event)
 {
-	m_AppFrame = new AppFrame(DEFAULT_FRAME_TITLE, wxDefaultPosition, wxSize(DEFAULT_APP_WIDTH, DEFAULT_APP_HEIGHT));
 	m_AppFrame->Show(true);
 	m_SplashScreen->Destroy();
 }
