@@ -23,10 +23,17 @@ EVT_MENU(ID_None, SavvyEditor::AppFrame::OnLangSelectNone)
 EVT_SIZE(SavvyEditor::AppFrame::OnResize)
 EVT_TEXT(ID_TextAreaUser, SavvyEditor::AppFrame::OnTextChanged)
 EVT_MENU_OPEN(SavvyEditor::AppFrame::OnMenuOpen)
+EVT_MENU(ID_FindDialog, SavvyEditor::AppFrame::OnShowFindDialog)
+EVT_MENU(ID_ReplaceDialog, SavvyEditor::AppFrame::OnShowReplaceDialog)
+EVT_FIND(wxID_ANY, SavvyEditor::AppFrame::OnFindDialog)
+EVT_FIND_NEXT(wxID_ANY, SavvyEditor::AppFrame::OnFindDialog)
+EVT_FIND_REPLACE(wxID_ANY, SavvyEditor::AppFrame::OnFindDialog)
+EVT_FIND_REPLACE_ALL(wxID_ANY, SavvyEditor::AppFrame::OnFindDialog)
+EVT_FIND_CLOSE(wxID_ANY, SavvyEditor::AppFrame::OnFindDialog)
 wxEND_EVENT_TABLE()
 
 SavvyEditor::AppFrame::AppFrame(const wxString& a_Title, const wxPoint& a_Pos, const wxSize& a_Size)
-: wxFrame(NULL, wxID_ANY, a_Title, a_Pos, a_Size), m_TextAreaUser(NULL)
+: wxFrame(NULL, wxID_ANY, a_Title, a_Pos, a_Size), m_TextAreaUser(NULL), m_ReplaceDialog(NULL), m_FindDialog(NULL), m_CurrFindPos(0)
 {
 	// Center on screen
 	Centre();
@@ -58,6 +65,11 @@ SavvyEditor::AppFrame::AppFrame(const wxString& a_Title, const wxPoint& a_Pos, c
 	m_EditMenu->Append(wxID_DELETE, "&Delete\tDEL");
 	m_EditMenu->Append(wxID_SELECTALL, "Select &All\tCtrl+A", "Select all the text in the document");
 
+	// Search menu
+	m_SearchMenu = new wxMenu();
+	m_SearchMenu->AppendCheckItem(ID_FindDialog, wxT("&Find\tCtrl-F"));
+	m_SearchMenu->AppendCheckItem(ID_ReplaceDialog, wxT("Find and &Replace\tCtrl-Shift-F"));
+
 	// Language Menu
 	m_LanguageMenu = new wxMenu();
 	m_LanguageMenu->Append(ID_GLSL, "&GLSL", "Enable GLSL syntax highlighting");
@@ -76,6 +88,7 @@ SavvyEditor::AppFrame::AppFrame(const wxString& a_Title, const wxPoint& a_Pos, c
 	m_MenuBar = new wxMenuBar();
 	m_MenuBar->Append(m_FileMenu, "&File");
 	m_MenuBar->Append(m_EditMenu, "&Edit");
+	m_MenuBar->Append(m_SearchMenu, "&Search");
 	m_MenuBar->Append(m_LanguageMenu, "&Language");
 	m_MenuBar->Append(m_ConvertMenu, "&Conversion");
 	m_MenuBar->Append(m_HelpMenu, "&Help");
@@ -372,7 +385,7 @@ void SavvyEditor::AppFrame::OnPaste(wxCommandEvent& a_Event)
 
 void SavvyEditor::AppFrame::OnDelete(wxCommandEvent& a_Event)
 {
-	m_TextAreaUser->RemoveSelection();
+	m_TextAreaUser->DeleteBack();
 }
 
 void SavvyEditor::AppFrame::OnSelectAll(wxCommandEvent& a_Event)
@@ -422,7 +435,7 @@ void SavvyEditor::AppFrame::OnMenuOpen(wxMenuEvent& a_Event)
 		}
 
 		// Delete enable/disable
-		if (m_TextAreaUser->HasSelection())
+		if (!m_TextAreaUser->IsEmpty())
 		{
 			currItem = currMenu->FindItem(wxID_DELETE);
 			EnableMenuItem(currItem, true);
@@ -555,4 +568,252 @@ void SavvyEditor::AppFrame::OnLangSelectHLSL(wxCommandEvent& a_Event)
 void SavvyEditor::AppFrame::OnLangSelectNone(wxCommandEvent& a_Event)
 {
 	m_TextAreaUser->StyleClearAll();
+	m_TextAreaUser->SetLexer(wxSTC_LEX_CPP);
+
+	m_TextAreaUser->SetMarginWidth(MARGIN_LINE_NUMBERS, MARGIN_LINE_NUMBERS_WIDTH);
+	m_TextAreaUser->StyleSetForeground(wxSTC_STYLE_LINENUMBER, wxColour(75, 75, 75));
+	m_TextAreaUser->StyleSetBackground(wxSTC_STYLE_LINENUMBER, wxColour(220, 220, 220));
+	m_TextAreaUser->SetMarginType(MARGIN_LINE_NUMBERS, wxSTC_MARGIN_NUMBER);
+
+
+	// ---- Enable code folding
+	m_TextAreaUser->SetMarginType(MARGIN_FOLD, wxSTC_MARGIN_SYMBOL);
+	m_TextAreaUser->SetMarginWidth(MARGIN_FOLD, MARGIN_FOLD_WIDTH);
+	m_TextAreaUser->SetMarginMask(MARGIN_FOLD, wxSTC_MASK_FOLDERS);
+	m_TextAreaUser->StyleSetBackground(MARGIN_FOLD, C_BLOCK_BACKGROUND_COLOR);
+	m_TextAreaUser->SetMarginSensitive(MARGIN_FOLD, true);
+
+	// Properties found from http://www.scintilla.org/SciTEDoc.html
+	m_TextAreaUser->SetProperty(wxT("fold"), wxT("1"));
+	m_TextAreaUser->SetProperty(wxT("fold.comment"), wxT("1"));
+	m_TextAreaUser->SetProperty(wxT("fold.compact"), wxT("1"));
+
+	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDER, wxSTC_MARK_ARROW);
+	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDER, FOLDING_COLOR);
+	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDER, FOLDING_COLOR);
+
+	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN, wxSTC_MARK_ARROWDOWN);
+	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPEN, FOLDING_COLOR);
+	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPEN, FOLDING_COLOR);
+
+	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDERSUB, wxSTC_MARK_EMPTY);
+	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDERSUB, FOLDING_COLOR);
+	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDERSUB, FOLDING_COLOR);
+
+	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDEREND, wxSTC_MARK_ARROW);
+	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDEREND, FOLDING_COLOR);
+	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDEREND, _T("WHITE"));
+
+	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_ARROWDOWN);
+	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPENMID, FOLDING_COLOR);
+	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPENMID, _T("WHITE"));
+
+	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_EMPTY);
+	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDERMIDTAIL, FOLDING_COLOR);
+	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDERMIDTAIL, FOLDING_COLOR);
+
+	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL, wxSTC_MARK_EMPTY);
+	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDERTAIL, FOLDING_COLOR);
+	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDERTAIL, FOLDING_COLOR);
+	// ---- End of code folding part
+
+	m_TextAreaUser->SetWrapMode(wxSTC_WRAP_NONE);
+}
+
+void SavvyEditor::AppFrame::OnShowReplaceDialog(wxCommandEvent& a_Event)
+{
+	if (m_ReplaceDialog)
+	{
+		wxDELETE(m_ReplaceDialog);
+	}
+	else
+	{
+		m_ReplaceDialog = new wxFindReplaceDialog(this, &m_FindData, wxT("Find and replace dialog"), wxFR_REPLACEDIALOG);
+
+		m_ReplaceDialog->Show(true);
+	}
+}
+
+void SavvyEditor::AppFrame::OnShowFindDialog(wxCommandEvent& a_event)
+{
+	if (m_FindDialog)
+	{
+		wxDELETE(m_FindDialog);
+	}
+	else
+	{
+		m_FindDialog = new wxFindReplaceDialog(this, &m_FindData, wxT("Find dialog"));
+
+		m_FindDialog->Show(true);
+	}
+}
+
+void SavvyEditor::AppFrame::OnFindDialog(wxFindDialogEvent& a_Event)
+{
+	wxEventType type = a_Event.GetEventType();
+
+	if (type == wxEVT_FIND || type == wxEVT_FIND_NEXT)
+	{
+		if (!DoFind(a_Event.GetFindString(), a_Event.GetFlags()))
+		{
+			wxMessageBox(wxT("No more matches."), DEFAULT_FRAME_TITLE);
+		}
+	}
+	else if (type == wxEVT_FIND_REPLACE)
+	{
+		if (!DoReplace(a_Event.GetFindString(), a_Event.GetReplaceString(), a_Event.GetFlags()))
+		{
+			wxMessageBox(wxT("Nothing to replace."), DEFAULT_FRAME_TITLE);
+		}
+	}
+	else if (type == wxEVT_FIND_REPLACE_ALL)
+	{
+		int numReplaced = DoReplaceAll(a_Event.GetFindString(), a_Event.GetReplaceString(), a_Event.GetFlags());
+		if (numReplaced > 0)
+		{
+			wxString numString = wxString::Format(wxT("%i"), numReplaced);
+			numString.Append(" occurrences replaced.");
+			wxMessageBox(numString, DEFAULT_FRAME_TITLE);
+		}
+		else
+		{
+			wxMessageBox(wxT("Nothing to replace."), DEFAULT_FRAME_TITLE);
+		}
+	}
+	else if (type == wxEVT_FIND_CLOSE)
+	{
+		wxFindReplaceDialog *dlg = a_Event.GetDialog();
+
+		int idMenu;
+		const wxChar *txt;
+		if (dlg == m_FindDialog)
+		{
+			txt = wxT("Find");
+			idMenu = ID_FindDialog;
+			m_FindDialog = NULL;
+		}
+		else if (dlg == m_ReplaceDialog)
+		{
+			txt = wxT("Replace");
+			idMenu = ID_ReplaceDialog;
+			m_ReplaceDialog = NULL;
+		}
+		else
+		{
+			txt = wxT("Unknown");
+			idMenu = wxID_ANY;
+
+			wxFAIL_MSG(wxT("unexpected event"));
+		}
+
+		if (idMenu != wxID_ANY)
+		{
+			GetMenuBar()->Check(idMenu, false);
+		}
+
+		dlg->Destroy();
+	}
+	else
+	{
+		wxLogError(wxT("Unknown find dialog event!"));
+	}
+}
+
+bool SavvyEditor::AppFrame::DoFind(wxString& a_FindString, int a_Flags)
+{
+	m_TextAreaUser->SetCurrentPos(m_CurrFindPos + 1);
+	m_TextAreaUser->SearchAnchor();
+	int lastLine = m_TextAreaUser->GetCurrentLine();
+
+	if (a_Flags & wxFR_DOWN)
+	{
+		m_CurrFindPos = m_TextAreaUser->SearchNext(a_Flags, a_FindString);
+	}
+	else
+	{
+		m_CurrFindPos = m_TextAreaUser->SearchPrev(a_Flags, a_FindString);
+	}
+	
+	if (m_CurrFindPos == -1)
+	{
+		// Not found
+		m_CurrFindPos = 0;
+		return false;
+	}
+	int newLine = m_TextAreaUser->GetCurrentLine();
+	m_TextAreaUser->Freeze();
+	m_TextAreaUser->ScrollLines(newLine - lastLine);
+	m_TextAreaUser->Thaw();
+	return true;
+}
+
+bool SavvyEditor::AppFrame::DoReplace(wxString& a_FindString, const wxString& a_ReplaceString, int a_Flags)
+{
+	m_TextAreaUser->SetCurrentPos(m_CurrFindPos + 1);
+	m_TextAreaUser->SearchAnchor();
+	int lastLine = m_TextAreaUser->GetCurrentLine();
+	
+	if (a_Flags & wxFR_DOWN)
+	{
+		m_CurrFindPos = m_TextAreaUser->SearchNext(a_Flags, a_FindString);
+	}
+	else
+	{
+		m_CurrFindPos = m_TextAreaUser->SearchPrev(a_Flags, a_FindString);
+	}
+
+	if (m_CurrFindPos == -1)
+	{
+		// Not found
+		m_CurrFindPos = 0;
+		return false;
+	}
+	int newLine = m_TextAreaUser->GetCurrentLine();
+	m_TextAreaUser->Freeze();
+	m_TextAreaUser->ScrollLines(newLine - lastLine);
+
+	// Replace
+	m_TextAreaUser->RemoveSelection();
+	m_TextAreaUser->AddText(a_ReplaceString);
+
+	m_TextAreaUser->Thaw();
+	return true;
+}
+
+int SavvyEditor::AppFrame::DoReplaceAll(wxString& a_FindString, const wxString& a_ReplaceString, int a_Flags)
+{
+	int ctrReplaced = 0;
+
+	while (true)
+	{
+		m_TextAreaUser->SetCurrentPos(m_CurrFindPos + 1);
+		m_TextAreaUser->SearchAnchor();
+		int lastLine = m_TextAreaUser->GetCurrentLine();
+
+		if (a_Flags & wxFR_DOWN)
+		{
+			m_CurrFindPos = m_TextAreaUser->SearchNext(a_Flags, a_FindString);
+		}
+		else
+		{
+			m_CurrFindPos = m_TextAreaUser->SearchPrev(a_Flags, a_FindString);
+		}
+
+		if (m_CurrFindPos == -1)
+		{
+			// Not found
+			m_CurrFindPos = 0;
+			break;
+		}
+		m_TextAreaUser->Freeze();
+
+		// Replace, no scroll
+		m_TextAreaUser->RemoveSelection();
+		m_TextAreaUser->AddText(a_ReplaceString);
+
+		m_TextAreaUser->Thaw();
+		ctrReplaced++;
+	}
+
+	return ctrReplaced;
 }

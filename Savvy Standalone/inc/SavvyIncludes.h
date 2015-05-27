@@ -9,6 +9,7 @@ Contains generic include files needed all across the project.
 #endif
 #include <wx/stc/stc.h>
 #include <wx/splash.h>
+#include <wx/fdrepdlg.h>
 
 // Include our cross-compiler library
 #include "Savvy.h"

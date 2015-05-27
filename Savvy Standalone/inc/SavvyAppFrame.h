@@ -41,7 +41,9 @@ namespace SavvyEditor
 			ID_TextAreaUser,
 			ID_GLSL,
 			ID_HLSL,
-			ID_None
+			ID_None,
+			ID_FindDialog,
+			ID_ReplaceDialog
 		};
 
 		enum Margins
@@ -75,11 +77,18 @@ namespace SavvyEditor
 		void OnLangSelectGLSL(wxCommandEvent& a_Event);
 		void OnLangSelectHLSL(wxCommandEvent& a_Event);
 		void OnLangSelectNone(wxCommandEvent& a_Event);
+		void OnShowReplaceDialog(wxCommandEvent& a_Event);
+		void OnShowFindDialog(wxCommandEvent& a_event);
+		void OnFindDialog(wxFindDialogEvent& event);
+		bool DoFind(wxString& a_FindString, int a_Flags);
+		bool DoReplace(wxString& a_FindString, const wxString& a_ReplaceString, int a_Flags);
+		int DoReplaceAll(wxString& a_FindString, const wxString& a_ReplaceString, int a_Flags);
 		wxDECLARE_EVENT_TABLE();
 
 		wxMenu* m_FileMenu;
 		wxMenu* m_HelpMenu;
 		wxMenu* m_EditMenu;
+		wxMenu* m_SearchMenu;
 		wxMenu* m_ConvertMenu;
 		wxMenu* m_LanguageMenu;
 		wxMenuBar* m_MenuBar;
@@ -90,6 +99,10 @@ namespace SavvyEditor
 		wxString m_HLSLKeyWords;
 		wxString m_GLSLFuncs;
 		wxString m_HLSLFuncs;
+		wxFindReplaceDialog* m_ReplaceDialog;
+		wxFindReplaceDialog* m_FindDialog;
+		wxFindReplaceData m_FindData;
+		int m_CurrFindPos;
 
 		void CreateMainTextArea();
 	};
