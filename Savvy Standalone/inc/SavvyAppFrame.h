@@ -26,6 +26,8 @@
 
 namespace SavvyEditor
 {
+	class ConvertDialog;
+
 	/*
 	The top level application frame.
 	*/
@@ -37,13 +39,18 @@ namespace SavvyEditor
 
 		enum OptionID
 		{
-			ID_Convert = 1,
+			ID_ConversionOptions = 1,
 			ID_TextAreaUser,
+			ID_TextAreaConverted,
 			ID_GLSL,
 			ID_HLSL,
 			ID_None,
 			ID_FindDialog,
-			ID_ReplaceDialog
+			ID_ReplaceDialog,
+			ID_ConvertDialog,
+			ID_Convert,
+			ID_ClassicView,
+			ID_SplitView
 		};
 
 		enum Margins
@@ -52,6 +59,23 @@ namespace SavvyEditor
 			MARGIN_FOLD
 		};
 
+		inline wxString GetCurrentDocPath() { return m_CurrDocPath; }
+		inline void SetInputLang(wxString& a_Str) { m_InputLang = a_Str; }
+		inline void SetOutputLang(wxString& a_Str) { m_OutputLang = a_Str; }
+		inline void SetOutputDir(wxString& a_Str) { m_OutputDir = a_Str; }
+		inline void SetShaderType(wxString& a_Str) { m_ShaderType = a_Str; }
+		inline void SetInputEntry(wxString& a_Str) { m_InputEntry = a_Str; }
+		inline void SetOutputEntry(wxString& a_Str) { m_OutputEntry = a_Str; }
+		inline void ConversionOptionsSet(bool a_Val) { m_ConvertOptionsSet = a_Val; }
+
+		inline const wxString& GetInputLang() { return m_InputLang; }
+		inline const wxString& GetOutputLang() { return m_OutputLang; }
+		inline const wxString& GetOutputDir() { return m_OutputDir; }
+		inline const wxString& GetShaderType() { return m_ShaderType; }
+		inline const wxString& GetInputEntry() { return m_InputEntry; }
+		inline const wxString& GetOutputEntry() { return m_OutputEntry; }
+		
+		void TriggerConvert();
 
 	private:
 		void OnFileOpen(wxCommandEvent& a_Event);
@@ -68,6 +92,7 @@ namespace SavvyEditor
 		void OnPaste(wxCommandEvent& a_Event);
 		void OnDelete(wxCommandEvent& a_Event);
 		void OnSelectAll(wxCommandEvent& a_Event);
+		void OnConversionOptions(wxCommandEvent& a_Event);
 		void OnConvert(wxCommandEvent& a_Event);
 		void OnTextChanged(wxCommandEvent& a_Event);
 		void OnResize(wxSizeEvent& a_Event);
@@ -79,10 +104,13 @@ namespace SavvyEditor
 		void OnLangSelectNone(wxCommandEvent& a_Event);
 		void OnShowReplaceDialog(wxCommandEvent& a_Event);
 		void OnShowFindDialog(wxCommandEvent& a_event);
+		void OnClassicView(wxCommandEvent& a_event);
+		void OnSplitView(wxCommandEvent& a_event);
 		void OnFindDialog(wxFindDialogEvent& event);
 		bool DoFind(wxString& a_FindString, int a_Flags);
 		bool DoReplace(wxString& a_FindString, const wxString& a_ReplaceString, int a_Flags);
 		int DoReplaceAll(wxString& a_FindString, const wxString& a_ReplaceString, int a_Flags);
+		void OnFocusEditorWindow(wxFocusEvent& a_Event);
 		wxDECLARE_EVENT_TABLE();
 
 		wxMenu* m_FileMenu;
@@ -91,8 +119,10 @@ namespace SavvyEditor
 		wxMenu* m_SearchMenu;
 		wxMenu* m_ConvertMenu;
 		wxMenu* m_LanguageMenu;
+		wxMenu* m_ViewMenu;
 		wxMenuBar* m_MenuBar;
 		wxStyledTextCtrl* m_TextAreaUser; // the main text area
+		wxStyledTextCtrl* m_ConvertedTextArea;
 		wxSplashScreen* m_SplashScreen;
 		wxString m_CurrDocPath;
 		wxString m_GLSLKeyWords;
@@ -101,10 +131,28 @@ namespace SavvyEditor
 		wxString m_HLSLFuncs;
 		wxFindReplaceDialog* m_ReplaceDialog;
 		wxFindReplaceDialog* m_FindDialog;
+		ConvertDialog* m_ConversionDialog;
 		wxFindReplaceData m_FindData;
 		int m_CurrFindPos;
+		bool m_ConvertOptionsSet;
 
+		// Savvy Conversion specific members/methods
+		Savvy::ResultCode RegisterDefaultConverters(Savvy::ShaderConverter* converter);
+		Savvy::ResultCode RegisterDefaultShaderTypes(Savvy::ShaderConverter* converter);
+		Savvy::ShaderConverter* m_ShaderConverter;
+		Savvy::FileConvertOptions m_FileConvertOptions;
+		Savvy::BlobFileConvertOptions m_BlobFileConvertOptions;
+		wxString m_InputLang;
+		wxString m_OutputLang;
+		wxString m_ShaderType;
+		wxString m_OutputDir;
+		wxString m_InputEntry;
+		wxString m_OutputEntry;
 		void CreateMainTextArea();
+		void SetupConvertedTextArea();
+		wxStyledTextCtrl* m_LastSelectedTextCtrl;
+
+		void SetupSyntaxRules(wxStyledTextCtrl* a_Ctrl);
 	};
 }
 

@@ -24,7 +24,7 @@ SOFTWARE.
 #ifndef SAVVY_DEFINES_H
 #define SAVVY_DEFINES_H
 
-#define SAVVY_DEBUG 1
+#define SAVVY_DEBUG 0
 
 #define SAVVY_ORIGINAL_SEMANTIC_DECL "/* Original Semantic: "
 #define SAVVY_TEX_WIDTH "SavvyTexWidth"

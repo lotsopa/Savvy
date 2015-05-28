@@ -1,4 +1,5 @@
 #include "SavvyAppFrame.h"
+#include "SavvyConvertDialog.h"
 
 // Register all events for this frame class
 wxBEGIN_EVENT_TABLE(SavvyEditor::AppFrame, wxFrame)
@@ -16,6 +17,9 @@ EVT_MENU(wxID_COPY, SavvyEditor::AppFrame::OnCopy)
 EVT_MENU(wxID_PASTE, SavvyEditor::AppFrame::OnPaste)
 EVT_MENU(wxID_DELETE, SavvyEditor::AppFrame::OnDelete)
 EVT_MENU(wxID_SELECTALL, SavvyEditor::AppFrame::OnSelectAll)
+EVT_MENU(ID_ClassicView, SavvyEditor::AppFrame::OnClassicView)
+EVT_MENU(ID_SplitView, SavvyEditor::AppFrame::OnSplitView)
+EVT_MENU(ID_ConversionOptions, SavvyEditor::AppFrame::OnConversionOptions)
 EVT_MENU(ID_Convert, SavvyEditor::AppFrame::OnConvert)
 EVT_MENU(ID_GLSL, SavvyEditor::AppFrame::OnLangSelectGLSL)
 EVT_MENU(ID_HLSL, SavvyEditor::AppFrame::OnLangSelectHLSL)
@@ -33,8 +37,25 @@ EVT_FIND_CLOSE(wxID_ANY, SavvyEditor::AppFrame::OnFindDialog)
 wxEND_EVENT_TABLE()
 
 SavvyEditor::AppFrame::AppFrame(const wxString& a_Title, const wxPoint& a_Pos, const wxSize& a_Size)
-: wxFrame(NULL, wxID_ANY, a_Title, a_Pos, a_Size), m_TextAreaUser(NULL), m_ReplaceDialog(NULL), m_FindDialog(NULL), m_CurrFindPos(0)
+: wxFrame(NULL, wxID_ANY, a_Title, a_Pos, a_Size), m_TextAreaUser(NULL), m_ReplaceDialog(NULL), m_FindDialog(NULL), m_CurrFindPos(0),
+m_ConversionDialog(NULL), m_ConvertOptionsSet(false), m_ConvertedTextArea(NULL)
 {
+	m_ShaderConverter = new Savvy::ShaderConverter();
+
+	Savvy::ResultCode converterInitCode = RegisterDefaultConverters(m_ShaderConverter);
+
+	if (converterInitCode != Savvy::SAVVY_OK)
+	{
+		wxLogError("Failed to register default Savvy Converters.");
+	}
+
+	converterInitCode = RegisterDefaultShaderTypes(m_ShaderConverter);
+
+	if (converterInitCode != Savvy::SAVVY_OK)
+	{
+		wxLogError("Failed to register default Savvy Shader Types.");
+	}
+
 	// Center on screen
 	Centre();
 
@@ -65,6 +86,11 @@ SavvyEditor::AppFrame::AppFrame(const wxString& a_Title, const wxPoint& a_Pos, c
 	m_EditMenu->Append(wxID_DELETE, "&Delete\tDEL");
 	m_EditMenu->Append(wxID_SELECTALL, "Select &All\tCtrl+A", "Select all the text in the document");
 
+	// View
+	m_ViewMenu = new wxMenu();
+	m_ViewMenu->Append(ID_ClassicView, "&Classic View\tF3");
+	m_ViewMenu->Append(ID_SplitView, "&Split View\tF4");
+
 	// Search menu
 	m_SearchMenu = new wxMenu();
 	m_SearchMenu->AppendCheckItem(ID_FindDialog, wxT("&Find\tCtrl-F"));
@@ -82,12 +108,14 @@ SavvyEditor::AppFrame::AppFrame(const wxString& a_Title, const wxPoint& a_Pos, c
 
 	// Convert Menu
 	m_ConvertMenu = new wxMenu();
-	m_ConvertMenu->Append(ID_Convert, "&Convert\tF1", "Brings up the conversion options for the file");
+	m_ConvertMenu->Append(ID_Convert, "&Convert\tF1", "Converts the file");
+	m_ConvertMenu->Append(ID_ConversionOptions, "Conversion &Options\tF2", "Brings up the conversion options for the file");
 
 	// Create the toolbar that's going to contain the menus
 	m_MenuBar = new wxMenuBar();
 	m_MenuBar->Append(m_FileMenu, "&File");
 	m_MenuBar->Append(m_EditMenu, "&Edit");
+	m_MenuBar->Append(m_ViewMenu, "&View");
 	m_MenuBar->Append(m_SearchMenu, "&Search");
 	m_MenuBar->Append(m_LanguageMenu, "&Language");
 	m_MenuBar->Append(m_ConvertMenu, "&Conversion");
@@ -182,11 +210,10 @@ SavvyEditor::AppFrame::AppFrame(const wxString& a_Title, const wxPoint& a_Pos, c
 		"noise ""normalize ""pow ""printf ""Process2DQuadTessFactorsAvg ""Process2DQuadTessFactorsMax ""Process2DQuadTessFactorsMin ""ProcessIsolineTessFactors ""ProcessQuadTessFactorsAvg ""ProcessQuadTessFactorsMax ""ProcessQuadTessFactorsMin "
 		"ProcessTriTessFactorsAvg ""ProcessTriTessFactorsMax ""ProcessTriTessFactorsMin ""radians ""rcp ""reflect ""refract ""reversebits ""round ""rsqrt ""saturate ""sign ""sin ""sincos ""sinh ""smoothstep ""sqrt ""step ""tan ""tanh ""tex1D "
 		"tex1D ""tex1Dbias ""tex1Dgrad ""tex1Dlod ""tex1Dproj ""tex2D ""tex2D ""tex2Dbias ""tex2Dgrad ""tex2Dlod ""tex2Dproj ""tex3D ""tex3D ""tex3Dbias ""tex3Dgrad ""tex3Dlod ""tex3Dproj ""texCUBE ""texCUBE ""texCUBEbias ""texCUBEgrad ""texCUBElod "
-		"texCUBEproj ""transpose ""trunc ""CalculateLevelOfDetail ""CalculateLevelOfDetailUnclamped ""Gather ""GetDimensions ""GetSamplePosition ""Load ""Sample ""SampleBias ""SampleCmp ""SampleCmpLevelZero ""SampleGrad ""SampleLevel");
+		"texCUBEproj ""transpose ""trunc ""CalculateLevelOfDetail ""CalculateLevelOfDetailUnclamped ""Gather ""GetDimensions ""GetSamplePosition ""Load ""Sample ""SampleBias ""SampleCmp ""SampleCmpLevelZero ""SampleGrad ""SampleLevel mul");
 
 	// Create a status bar on the bottom
 	CreateStatusBar();
-
 	CreateMainTextArea();
 }
 
@@ -213,17 +240,21 @@ void SavvyEditor::AppFrame::OnAbout(wxCommandEvent& a_Event)
 
 void SavvyEditor::AppFrame::OnFileOpen(wxCommandEvent& a_Event)
 {
-	wxFileDialog* openDialog = new wxFileDialog(this, "Open File~", "", "", "", wxFD_OPEN);
+	wxFileDialog* openDialog = new wxFileDialog(this, "Open File", "", "", "", wxFD_OPEN);
 	int response = openDialog->ShowModal();
 
 	// If everything went well, open the file
 	if (response == wxID_OK) 
 	{
 		// Clear the Text Box
-		m_TextAreaUser->ClearAll();
-		m_TextAreaUser->LoadFile(openDialog->GetPath());
+		m_LastSelectedTextCtrl->ClearAll();
+		m_LastSelectedTextCtrl->LoadFile(openDialog->GetPath());
 		m_CurrDocPath = openDialog->GetPath();
-		SetTitle(openDialog->GetPath() + " - "DEFAULT_FRAME_TITLE);
+		if (m_LastSelectedTextCtrl == m_TextAreaUser)
+		{
+			SetTitle(openDialog->GetPath() + " - "DEFAULT_FRAME_TITLE);
+			m_ConvertOptionsSet = false;
+		}
 	}
 	openDialog->Destroy();
 }
@@ -231,8 +262,12 @@ void SavvyEditor::AppFrame::OnFileOpen(wxCommandEvent& a_Event)
 void SavvyEditor::AppFrame::OnFileNew(wxCommandEvent& a_Event)
 {
 	// Set the Title to reflect the file open
-	SetTitle("Untitled* - "DEFAULT_FRAME_TITLE);
-	m_TextAreaUser->ClearAll();
+	if (m_LastSelectedTextCtrl == m_TextAreaUser)
+	{
+		SetTitle("Untitled* - "DEFAULT_FRAME_TITLE);
+		m_ConvertOptionsSet = false;
+	}
+	m_LastSelectedTextCtrl->ClearAll();
 }
 
 void SavvyEditor::AppFrame::OnFileSave(wxCommandEvent& a_Event)
@@ -240,8 +275,10 @@ void SavvyEditor::AppFrame::OnFileSave(wxCommandEvent& a_Event)
 	if (m_CurrDocPath != DEFAULT_DOC_PATH)
 	{
 		// Save to the already-set path for the document
-		m_TextAreaUser->SaveFile(m_CurrDocPath);
-		SetTitle(m_CurrDocPath + " - "DEFAULT_FRAME_TITLE);
+		m_LastSelectedTextCtrl->SaveFile(m_CurrDocPath);
+
+		if (m_LastSelectedTextCtrl == m_TextAreaUser)
+			SetTitle(m_CurrDocPath + " - "DEFAULT_FRAME_TITLE);
 	}
 	else
 	{
@@ -252,15 +289,17 @@ void SavvyEditor::AppFrame::OnFileSave(wxCommandEvent& a_Event)
 
 void SavvyEditor::AppFrame::OnFileSaveAs(wxCommandEvent& a_Event)
 {
-	wxFileDialog* saveDialog = new wxFileDialog(this, "Save File~", "", "", "Text Files (*.txt)|*.txt|C++ Files (*.cpp)|*.cpp|GLSL Files (*.glsl)|*.glsl|HLSL Files (*.hlsl)|*.hlsl", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+	wxFileDialog* saveDialog = new wxFileDialog(this, "Save File", "", "", "Text Files (*.txt)|*.txt|C++ Files (*.cpp)|*.cpp|GLSL Files (*.glsl)|*.glsl|HLSL Files (*.hlsl)|*.hlsl", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 	int response = saveDialog->ShowModal();
 
 	// If everything went well, save the file
 	if (response == wxID_OK)
 	{
-		m_TextAreaUser->SaveFile(saveDialog->GetPath());
+		m_LastSelectedTextCtrl->SaveFile(saveDialog->GetPath());
 		m_CurrDocPath = saveDialog->GetPath();
-		SetTitle(m_CurrDocPath + " - "DEFAULT_FRAME_TITLE);
+
+		if (m_LastSelectedTextCtrl == m_TextAreaUser)
+			SetTitle(m_CurrDocPath + " - "DEFAULT_FRAME_TITLE);
 	}
 	saveDialog->Destroy();
 }
@@ -268,85 +307,58 @@ void SavvyEditor::AppFrame::OnFileSaveAs(wxCommandEvent& a_Event)
 void SavvyEditor::AppFrame::OnFileClose(wxCommandEvent& a_Event)
 {
 	// Clear the Text Box
-	m_TextAreaUser->ClearAll();
-	// Reset the current File being edited
-	m_CurrDocPath = DEFAULT_DOC_PATH;
-	// Set the Title to reflect the file open
-	SetTitle("Untitled* - "DEFAULT_FRAME_TITLE);
+	m_LastSelectedTextCtrl->ClearAll();
+
+	if (m_LastSelectedTextCtrl == m_ConvertedTextArea)
+	{
+		m_ConvertedTextArea->Destroy();
+		m_ConvertedTextArea = NULL;
+		m_LastSelectedTextCtrl = m_TextAreaUser;
+		m_TextAreaUser->SetSize(GetClientSize());
+	}
+	else
+	{
+		// Reset the current File being edited
+		m_CurrDocPath = DEFAULT_DOC_PATH;
+		// Set the Title to reflect the file open
+		SetTitle("Untitled* - "DEFAULT_FRAME_TITLE);
+	}
 }
 
 void SavvyEditor::AppFrame::CreateMainTextArea()
 {
 	// Create the text area
-	wxSize areaSize = GetClientSize();
-	areaSize.SetWidth(areaSize.GetWidth() / 2);
-	m_TextAreaUser = new wxStyledTextCtrl(this, ID_TextAreaUser, wxDefaultPosition, areaSize, wxTE_PROCESS_ENTER | wxTE_MULTILINE);
-	
-	// Set up the margins for the line numbers
-	m_TextAreaUser->StyleClearAll();
-	m_TextAreaUser->SetLexer(wxSTC_LEX_CPP);
-
-	m_TextAreaUser->SetMarginWidth(MARGIN_LINE_NUMBERS, MARGIN_LINE_NUMBERS_WIDTH);
-	m_TextAreaUser->StyleSetForeground(wxSTC_STYLE_LINENUMBER, wxColour(75, 75, 75));
-	m_TextAreaUser->StyleSetBackground(wxSTC_STYLE_LINENUMBER, wxColour(220, 220, 220));
-	m_TextAreaUser->SetMarginType(MARGIN_LINE_NUMBERS, wxSTC_MARGIN_NUMBER);
-
-
-	// ---- Enable code folding
-	m_TextAreaUser->SetMarginType(MARGIN_FOLD, wxSTC_MARGIN_SYMBOL);
-	m_TextAreaUser->SetMarginWidth(MARGIN_FOLD, MARGIN_FOLD_WIDTH);
-	m_TextAreaUser->SetMarginMask(MARGIN_FOLD, wxSTC_MASK_FOLDERS);
-	m_TextAreaUser->StyleSetBackground(MARGIN_FOLD, C_BLOCK_BACKGROUND_COLOR);
-	m_TextAreaUser->SetMarginSensitive(MARGIN_FOLD, true);
-
-	// Properties found from http://www.scintilla.org/SciTEDoc.html
-	m_TextAreaUser->SetProperty(wxT("fold"), wxT("1"));
-	m_TextAreaUser->SetProperty(wxT("fold.comment"), wxT("1"));
-	m_TextAreaUser->SetProperty(wxT("fold.compact"), wxT("1"));
-
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDER, wxSTC_MARK_ARROW);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDER, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDER, FOLDING_COLOR);
-
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN, wxSTC_MARK_ARROWDOWN);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPEN, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPEN, FOLDING_COLOR);
-
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDERSUB, wxSTC_MARK_EMPTY);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDERSUB, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDERSUB, FOLDING_COLOR);
-
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDEREND, wxSTC_MARK_ARROW);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDEREND, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDEREND, _T("WHITE"));
-
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_ARROWDOWN);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPENMID, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPENMID, _T("WHITE"));
-
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_EMPTY);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDERMIDTAIL, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDERMIDTAIL, FOLDING_COLOR);
-
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL, wxSTC_MARK_EMPTY);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDERTAIL, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDERTAIL, FOLDING_COLOR);
-	// ---- End of code folding part
-
-	m_TextAreaUser->SetWrapMode(wxSTC_WRAP_NONE);
-
-	m_TextAreaUser->Connect(wxEVT_STC_MARGINCLICK, wxStyledTextEventHandler(SavvyEditor::AppFrame::OnMarginClick), NULL, this);
-
+	m_TextAreaUser = new wxStyledTextCtrl(this, ID_TextAreaUser, wxDefaultPosition, GetClientSize(), wxTE_PROCESS_ENTER | wxTE_MULTILINE);
+	SetupSyntaxRules(m_TextAreaUser);
 	SetTitle("Untitled* - "DEFAULT_FRAME_TITLE);
+	m_LastSelectedTextCtrl = m_TextAreaUser;
+	m_TextAreaUser->Connect(wxEVT_SET_FOCUS, (wxObjectEventFunction)&SavvyEditor::AppFrame::OnFocusEditorWindow, NULL, this);
 }
 
 void SavvyEditor::AppFrame::OnResize(wxSizeEvent& a_Event)
 {
-	if (m_TextAreaUser)
+	if (m_ConvertedTextArea)
 	{
 		wxSize areaSize = GetClientSize();
 		areaSize.SetWidth(areaSize.GetWidth() / 2);
-		m_TextAreaUser->SetSize(areaSize);
+
+		if (m_TextAreaUser)
+		{
+			m_TextAreaUser->SetSize(areaSize);
+		}
+
+		areaSize = GetClientSize();
+		areaSize.SetWidth(areaSize.GetWidth() / 2);
+		wxPoint point;
+		point.x = areaSize.GetWidth();
+		point.y = wxDefaultPosition.y;
+		m_ConvertedTextArea->SetPosition(point);
+		m_ConvertedTextArea->SetSize(areaSize);
+	}
+	else
+	{
+		if (m_TextAreaUser)
+			m_TextAreaUser->SetSize(GetClientSize());
 	}
 }
 
@@ -360,43 +372,51 @@ void SavvyEditor::AppFrame::OnTextChanged(wxCommandEvent& event)
 
 void SavvyEditor::AppFrame::OnUndo(wxCommandEvent& a_Event)
 {
-	m_TextAreaUser->Undo();
+	m_LastSelectedTextCtrl->Undo();
 }
 
 void SavvyEditor::AppFrame::OnRedo(wxCommandEvent& a_Event)
 {
-	m_TextAreaUser->Redo();
+	m_LastSelectedTextCtrl->Redo();
 }
 
 void SavvyEditor::AppFrame::OnCut(wxCommandEvent& a_Event)
 {
-	m_TextAreaUser->Cut();
+	m_LastSelectedTextCtrl->Cut();
 }
 
 void SavvyEditor::AppFrame::OnCopy(wxCommandEvent& a_Event)
 {
-	m_TextAreaUser->Copy();
+	m_LastSelectedTextCtrl->Copy();
 }
 
 void SavvyEditor::AppFrame::OnPaste(wxCommandEvent& a_Event)
 {
-	m_TextAreaUser->Paste();
+	m_LastSelectedTextCtrl->Paste();
 }
 
 void SavvyEditor::AppFrame::OnDelete(wxCommandEvent& a_Event)
 {
-	m_TextAreaUser->DeleteBack();
+	m_LastSelectedTextCtrl->DeleteBack();
 }
 
 void SavvyEditor::AppFrame::OnSelectAll(wxCommandEvent& a_Event)
 {
-	m_TextAreaUser->SelectAll();
+	m_LastSelectedTextCtrl->SelectAll();
 }
 
-void SavvyEditor::AppFrame::OnConvert(wxCommandEvent& a_Event)
+void SavvyEditor::AppFrame::OnConversionOptions(wxCommandEvent& a_Event)
 {
-	wxMessageBox("TODO",
-		"TODO", wxOK | wxICON_INFORMATION);
+	if (!m_ConversionDialog)
+	{
+		m_ConversionDialog = new ConvertDialog(this, ID_ConvertDialog, "Conversion options");
+
+		if (m_ConversionDialog->ShowModal() != wxID_OK)
+		{
+			m_ConversionDialog->Destroy();
+			m_ConversionDialog = NULL;
+		}
+	}
 }
 
 void SavvyEditor::AppFrame::OnMenuOpen(wxMenuEvent& a_Event)
@@ -411,7 +431,7 @@ void SavvyEditor::AppFrame::OnMenuOpen(wxMenuEvent& a_Event)
 	if (currMenu->GetTitle() == "&Edit")
 	{
 		// Redo enable/disable
-		if (m_TextAreaUser->CanRedo())
+		if (m_LastSelectedTextCtrl->CanRedo())
 		{
 			currItem = currMenu->FindItem(wxID_REDO);
 			EnableMenuItem(currItem, true);
@@ -423,7 +443,7 @@ void SavvyEditor::AppFrame::OnMenuOpen(wxMenuEvent& a_Event)
 		}
 
 		// Undo enable/disable
-		if (m_TextAreaUser->CanUndo())
+		if (m_LastSelectedTextCtrl->CanUndo())
 		{
 			currItem = currMenu->FindItem(wxID_UNDO);
 			EnableMenuItem(currItem, true);
@@ -435,7 +455,7 @@ void SavvyEditor::AppFrame::OnMenuOpen(wxMenuEvent& a_Event)
 		}
 
 		// Delete enable/disable
-		if (!m_TextAreaUser->IsEmpty())
+		if (!m_LastSelectedTextCtrl->IsEmpty())
 		{
 			currItem = currMenu->FindItem(wxID_DELETE);
 			EnableMenuItem(currItem, true);
@@ -447,7 +467,7 @@ void SavvyEditor::AppFrame::OnMenuOpen(wxMenuEvent& a_Event)
 		}
 
 		// Copy
-		if (m_TextAreaUser->CanCopy())
+		if (m_LastSelectedTextCtrl->CanCopy())
 		{
 			currItem = currMenu->FindItem(wxID_COPY);
 			EnableMenuItem(currItem, true);
@@ -459,7 +479,7 @@ void SavvyEditor::AppFrame::OnMenuOpen(wxMenuEvent& a_Event)
 		}
 
 		// Cut
-		if (m_TextAreaUser->CanCut())
+		if (m_LastSelectedTextCtrl->CanCut())
 		{
 			currItem = currMenu->FindItem(wxID_CUT);
 			EnableMenuItem(currItem, true);
@@ -471,7 +491,7 @@ void SavvyEditor::AppFrame::OnMenuOpen(wxMenuEvent& a_Event)
 		}
 
 		// Paste
-		if (m_TextAreaUser->CanPaste())
+		if (m_LastSelectedTextCtrl->CanPaste())
 		{
 			currItem = currMenu->FindItem(wxID_PASTE);
 			EnableMenuItem(currItem, true);
@@ -484,7 +504,7 @@ void SavvyEditor::AppFrame::OnMenuOpen(wxMenuEvent& a_Event)
 	}
 	else if (currMenu->GetTitle() == "&File")
 	{
-		if (m_TextAreaUser->IsModified())
+		if (m_LastSelectedTextCtrl->IsModified())
 		{
 			currItem = currMenu->FindItem(wxID_SAVE);
 			EnableMenuItem(currItem, true);
@@ -510,114 +530,114 @@ void SavvyEditor::AppFrame::OnMarginClick(wxStyledTextEvent& a_Event)
 {
 	if (a_Event.GetMargin() == MARGIN_FOLD)
 	{
-		int lineClick = m_TextAreaUser->LineFromPosition(a_Event.GetPosition());
-		int levelClick = m_TextAreaUser->GetFoldLevel(lineClick);
+		int lineClick = m_LastSelectedTextCtrl->LineFromPosition(a_Event.GetPosition());
+		int levelClick = m_LastSelectedTextCtrl->GetFoldLevel(lineClick);
 
 		if ((levelClick & wxSTC_FOLDLEVELHEADERFLAG) > 0)
 		{
-			m_TextAreaUser->ToggleFold(lineClick);
+			m_LastSelectedTextCtrl->ToggleFold(lineClick);
 		}
 	}
 }
 
 void SavvyEditor::AppFrame::OnLangSelectGLSL(wxCommandEvent& a_Event)
 {
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_STRING, C_STRING_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_PREPROCESSOR, C_PREPROCESSOR_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_IDENTIFIER, C_IDENTIFIER_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_NUMBER, C_NUMBER_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_CHARACTER, C_CHARACTER_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_WORD, C_WORD_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_WORD2, C_WORD2_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_COMMENT, C_COMMENT_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_COMMENTLINE, C_COMMENTLINE_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_COMMENTDOC, C_COMMENTDOC_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_COMMENTDOCKEYWORD, C_COMMENTDOCKEYWORD_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_COMMENTDOCKEYWORDERROR, C_COMMENTDOCKEYWORDERROR_COLOR);
-	m_TextAreaUser->StyleSetBold(wxSTC_C_WORD, true);
-	m_TextAreaUser->StyleSetBold(wxSTC_C_WORD2, true);
-	m_TextAreaUser->StyleSetBold(wxSTC_C_COMMENTDOCKEYWORD, true);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_STRING, C_STRING_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_PREPROCESSOR, C_PREPROCESSOR_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_IDENTIFIER, C_IDENTIFIER_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_NUMBER, C_NUMBER_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_CHARACTER, C_CHARACTER_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_WORD, C_WORD_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_WORD2, C_WORD2_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_COMMENT, C_COMMENT_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_COMMENTLINE, C_COMMENTLINE_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_COMMENTDOC, C_COMMENTDOC_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_COMMENTDOCKEYWORD, C_COMMENTDOCKEYWORD_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_COMMENTDOCKEYWORDERROR, C_COMMENTDOCKEYWORDERROR_COLOR);
+	m_LastSelectedTextCtrl->StyleSetBold(wxSTC_C_WORD, true);
+	m_LastSelectedTextCtrl->StyleSetBold(wxSTC_C_WORD2, true);
+	m_LastSelectedTextCtrl->StyleSetBold(wxSTC_C_COMMENTDOCKEYWORD, true);
 
-	m_TextAreaUser->SetKeyWords(0, m_GLSLKeyWords);
-	m_TextAreaUser->SetKeyWords(1, m_GLSLFuncs);
+	m_LastSelectedTextCtrl->SetKeyWords(0, m_GLSLKeyWords);
+	m_LastSelectedTextCtrl->SetKeyWords(1, m_GLSLFuncs);
 	
 }
 
 void SavvyEditor::AppFrame::OnLangSelectHLSL(wxCommandEvent& a_Event)
 {
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_STRING, C_STRING_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_PREPROCESSOR, C_PREPROCESSOR_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_IDENTIFIER, C_IDENTIFIER_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_NUMBER, C_NUMBER_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_CHARACTER, C_CHARACTER_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_WORD, C_WORD_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_WORD2, C_WORD2_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_COMMENT, C_COMMENT_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_COMMENTLINE, C_COMMENTLINE_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_COMMENTDOC, C_COMMENTDOC_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_COMMENTDOCKEYWORD, C_COMMENTDOCKEYWORD_COLOR);
-	m_TextAreaUser->StyleSetForeground(wxSTC_C_COMMENTDOCKEYWORDERROR, C_COMMENTDOCKEYWORDERROR_COLOR);
-	m_TextAreaUser->StyleSetBold(wxSTC_C_WORD, true);
-	m_TextAreaUser->StyleSetBold(wxSTC_C_WORD2, true);
-	m_TextAreaUser->StyleSetBold(wxSTC_C_COMMENTDOCKEYWORD, true);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_STRING, C_STRING_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_PREPROCESSOR, C_PREPROCESSOR_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_IDENTIFIER, C_IDENTIFIER_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_NUMBER, C_NUMBER_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_CHARACTER, C_CHARACTER_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_WORD, C_WORD_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_WORD2, C_WORD2_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_COMMENT, C_COMMENT_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_COMMENTLINE, C_COMMENTLINE_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_COMMENTDOC, C_COMMENTDOC_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_COMMENTDOCKEYWORD, C_COMMENTDOCKEYWORD_COLOR);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_C_COMMENTDOCKEYWORDERROR, C_COMMENTDOCKEYWORDERROR_COLOR);
+	m_LastSelectedTextCtrl->StyleSetBold(wxSTC_C_WORD, true);
+	m_LastSelectedTextCtrl->StyleSetBold(wxSTC_C_WORD2, true);
+	m_LastSelectedTextCtrl->StyleSetBold(wxSTC_C_COMMENTDOCKEYWORD, true);
 
-	m_TextAreaUser->SetKeyWords(0, m_HLSLKeyWords);
-	m_TextAreaUser->SetKeyWords(1, m_HLSLFuncs);
+	m_LastSelectedTextCtrl->SetKeyWords(0, m_HLSLKeyWords);
+	m_LastSelectedTextCtrl->SetKeyWords(1, m_HLSLFuncs);
 }
 
 void SavvyEditor::AppFrame::OnLangSelectNone(wxCommandEvent& a_Event)
 {
-	m_TextAreaUser->StyleClearAll();
-	m_TextAreaUser->SetLexer(wxSTC_LEX_CPP);
+	m_LastSelectedTextCtrl->StyleClearAll();
+	m_LastSelectedTextCtrl->SetLexer(wxSTC_LEX_CPP);
 
-	m_TextAreaUser->SetMarginWidth(MARGIN_LINE_NUMBERS, MARGIN_LINE_NUMBERS_WIDTH);
-	m_TextAreaUser->StyleSetForeground(wxSTC_STYLE_LINENUMBER, wxColour(75, 75, 75));
-	m_TextAreaUser->StyleSetBackground(wxSTC_STYLE_LINENUMBER, wxColour(220, 220, 220));
-	m_TextAreaUser->SetMarginType(MARGIN_LINE_NUMBERS, wxSTC_MARGIN_NUMBER);
+	m_LastSelectedTextCtrl->SetMarginWidth(MARGIN_LINE_NUMBERS, MARGIN_LINE_NUMBERS_WIDTH);
+	m_LastSelectedTextCtrl->StyleSetForeground(wxSTC_STYLE_LINENUMBER, wxColour(75, 75, 75));
+	m_LastSelectedTextCtrl->StyleSetBackground(wxSTC_STYLE_LINENUMBER, wxColour(220, 220, 220));
+	m_LastSelectedTextCtrl->SetMarginType(MARGIN_LINE_NUMBERS, wxSTC_MARGIN_NUMBER);
 
 
 	// ---- Enable code folding
-	m_TextAreaUser->SetMarginType(MARGIN_FOLD, wxSTC_MARGIN_SYMBOL);
-	m_TextAreaUser->SetMarginWidth(MARGIN_FOLD, MARGIN_FOLD_WIDTH);
-	m_TextAreaUser->SetMarginMask(MARGIN_FOLD, wxSTC_MASK_FOLDERS);
-	m_TextAreaUser->StyleSetBackground(MARGIN_FOLD, C_BLOCK_BACKGROUND_COLOR);
-	m_TextAreaUser->SetMarginSensitive(MARGIN_FOLD, true);
+	m_LastSelectedTextCtrl->SetMarginType(MARGIN_FOLD, wxSTC_MARGIN_SYMBOL);
+	m_LastSelectedTextCtrl->SetMarginWidth(MARGIN_FOLD, MARGIN_FOLD_WIDTH);
+	m_LastSelectedTextCtrl->SetMarginMask(MARGIN_FOLD, wxSTC_MASK_FOLDERS);
+	m_LastSelectedTextCtrl->StyleSetBackground(MARGIN_FOLD, C_BLOCK_BACKGROUND_COLOR);
+	m_LastSelectedTextCtrl->SetMarginSensitive(MARGIN_FOLD, true);
 
 	// Properties found from http://www.scintilla.org/SciTEDoc.html
-	m_TextAreaUser->SetProperty(wxT("fold"), wxT("1"));
-	m_TextAreaUser->SetProperty(wxT("fold.comment"), wxT("1"));
-	m_TextAreaUser->SetProperty(wxT("fold.compact"), wxT("1"));
+	m_LastSelectedTextCtrl->SetProperty(wxT("fold"), wxT("1"));
+	m_LastSelectedTextCtrl->SetProperty(wxT("fold.comment"), wxT("1"));
+	m_LastSelectedTextCtrl->SetProperty(wxT("fold.compact"), wxT("1"));
 
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDER, wxSTC_MARK_ARROW);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDER, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDER, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerDefine(wxSTC_MARKNUM_FOLDER, wxSTC_MARK_ARROW);
+	m_LastSelectedTextCtrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDER, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDER, FOLDING_COLOR);
 
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN, wxSTC_MARK_ARROWDOWN);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPEN, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPEN, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN, wxSTC_MARK_ARROWDOWN);
+	m_LastSelectedTextCtrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPEN, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPEN, FOLDING_COLOR);
 
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDERSUB, wxSTC_MARK_EMPTY);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDERSUB, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDERSUB, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerDefine(wxSTC_MARKNUM_FOLDERSUB, wxSTC_MARK_EMPTY);
+	m_LastSelectedTextCtrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDERSUB, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDERSUB, FOLDING_COLOR);
 
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDEREND, wxSTC_MARK_ARROW);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDEREND, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDEREND, _T("WHITE"));
+	m_LastSelectedTextCtrl->MarkerDefine(wxSTC_MARKNUM_FOLDEREND, wxSTC_MARK_ARROW);
+	m_LastSelectedTextCtrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDEREND, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDEREND, _T("WHITE"));
 
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_ARROWDOWN);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPENMID, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPENMID, _T("WHITE"));
+	m_LastSelectedTextCtrl->MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_ARROWDOWN);
+	m_LastSelectedTextCtrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPENMID, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPENMID, _T("WHITE"));
 
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_EMPTY);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDERMIDTAIL, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDERMIDTAIL, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_EMPTY);
+	m_LastSelectedTextCtrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDERMIDTAIL, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDERMIDTAIL, FOLDING_COLOR);
 
-	m_TextAreaUser->MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL, wxSTC_MARK_EMPTY);
-	m_TextAreaUser->MarkerSetForeground(wxSTC_MARKNUM_FOLDERTAIL, FOLDING_COLOR);
-	m_TextAreaUser->MarkerSetBackground(wxSTC_MARKNUM_FOLDERTAIL, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL, wxSTC_MARK_EMPTY);
+	m_LastSelectedTextCtrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDERTAIL, FOLDING_COLOR);
+	m_LastSelectedTextCtrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDERTAIL, FOLDING_COLOR);
 	// ---- End of code folding part
 
-	m_TextAreaUser->SetWrapMode(wxSTC_WRAP_NONE);
+	m_LastSelectedTextCtrl->SetWrapMode(wxSTC_WRAP_NONE);
 }
 
 void SavvyEditor::AppFrame::OnShowReplaceDialog(wxCommandEvent& a_Event)
@@ -721,17 +741,17 @@ void SavvyEditor::AppFrame::OnFindDialog(wxFindDialogEvent& a_Event)
 
 bool SavvyEditor::AppFrame::DoFind(wxString& a_FindString, int a_Flags)
 {
-	m_TextAreaUser->SetCurrentPos(m_CurrFindPos + 1);
-	m_TextAreaUser->SearchAnchor();
-	int lastLine = m_TextAreaUser->GetCurrentLine();
+	m_LastSelectedTextCtrl->SetCurrentPos(m_CurrFindPos + 1);
+	m_LastSelectedTextCtrl->SearchAnchor();
+	int lastLine = m_LastSelectedTextCtrl->GetCurrentLine();
 
 	if (a_Flags & wxFR_DOWN)
 	{
-		m_CurrFindPos = m_TextAreaUser->SearchNext(a_Flags, a_FindString);
+		m_CurrFindPos = m_LastSelectedTextCtrl->SearchNext(a_Flags, a_FindString);
 	}
 	else
 	{
-		m_CurrFindPos = m_TextAreaUser->SearchPrev(a_Flags, a_FindString);
+		m_CurrFindPos = m_LastSelectedTextCtrl->SearchPrev(a_Flags, a_FindString);
 	}
 	
 	if (m_CurrFindPos == -1)
@@ -740,26 +760,26 @@ bool SavvyEditor::AppFrame::DoFind(wxString& a_FindString, int a_Flags)
 		m_CurrFindPos = 0;
 		return false;
 	}
-	int newLine = m_TextAreaUser->GetCurrentLine();
-	m_TextAreaUser->Freeze();
-	m_TextAreaUser->ScrollLines(newLine - lastLine);
-	m_TextAreaUser->Thaw();
+	int newLine = m_LastSelectedTextCtrl->GetCurrentLine();
+	m_LastSelectedTextCtrl->Freeze();
+	m_LastSelectedTextCtrl->ScrollLines(newLine - lastLine);
+	m_LastSelectedTextCtrl->Thaw();
 	return true;
 }
 
 bool SavvyEditor::AppFrame::DoReplace(wxString& a_FindString, const wxString& a_ReplaceString, int a_Flags)
 {
-	m_TextAreaUser->SetCurrentPos(m_CurrFindPos + 1);
-	m_TextAreaUser->SearchAnchor();
-	int lastLine = m_TextAreaUser->GetCurrentLine();
+	m_LastSelectedTextCtrl->SetCurrentPos(m_CurrFindPos + 1);
+	m_LastSelectedTextCtrl->SearchAnchor();
+	int lastLine = m_LastSelectedTextCtrl->GetCurrentLine();
 	
 	if (a_Flags & wxFR_DOWN)
 	{
-		m_CurrFindPos = m_TextAreaUser->SearchNext(a_Flags, a_FindString);
+		m_CurrFindPos = m_LastSelectedTextCtrl->SearchNext(a_Flags, a_FindString);
 	}
 	else
 	{
-		m_CurrFindPos = m_TextAreaUser->SearchPrev(a_Flags, a_FindString);
+		m_CurrFindPos = m_LastSelectedTextCtrl->SearchPrev(a_Flags, a_FindString);
 	}
 
 	if (m_CurrFindPos == -1)
@@ -768,15 +788,15 @@ bool SavvyEditor::AppFrame::DoReplace(wxString& a_FindString, const wxString& a_
 		m_CurrFindPos = 0;
 		return false;
 	}
-	int newLine = m_TextAreaUser->GetCurrentLine();
-	m_TextAreaUser->Freeze();
-	m_TextAreaUser->ScrollLines(newLine - lastLine);
+	int newLine = m_LastSelectedTextCtrl->GetCurrentLine();
+	m_LastSelectedTextCtrl->Freeze();
+	m_LastSelectedTextCtrl->ScrollLines(newLine - lastLine);
 
 	// Replace
-	m_TextAreaUser->RemoveSelection();
-	m_TextAreaUser->AddText(a_ReplaceString);
+	m_LastSelectedTextCtrl->RemoveSelection();
+	m_LastSelectedTextCtrl->AddText(a_ReplaceString);
 
-	m_TextAreaUser->Thaw();
+	m_LastSelectedTextCtrl->Thaw();
 	return true;
 }
 
@@ -786,17 +806,17 @@ int SavvyEditor::AppFrame::DoReplaceAll(wxString& a_FindString, const wxString& 
 
 	while (true)
 	{
-		m_TextAreaUser->SetCurrentPos(m_CurrFindPos + 1);
-		m_TextAreaUser->SearchAnchor();
-		int lastLine = m_TextAreaUser->GetCurrentLine();
+		m_LastSelectedTextCtrl->SetCurrentPos(m_CurrFindPos + 1);
+		m_LastSelectedTextCtrl->SearchAnchor();
+		int lastLine = m_LastSelectedTextCtrl->GetCurrentLine();
 
 		if (a_Flags & wxFR_DOWN)
 		{
-			m_CurrFindPos = m_TextAreaUser->SearchNext(a_Flags, a_FindString);
+			m_CurrFindPos = m_LastSelectedTextCtrl->SearchNext(a_Flags, a_FindString);
 		}
 		else
 		{
-			m_CurrFindPos = m_TextAreaUser->SearchPrev(a_Flags, a_FindString);
+			m_CurrFindPos = m_LastSelectedTextCtrl->SearchPrev(a_Flags, a_FindString);
 		}
 
 		if (m_CurrFindPos == -1)
@@ -805,15 +825,434 @@ int SavvyEditor::AppFrame::DoReplaceAll(wxString& a_FindString, const wxString& 
 			m_CurrFindPos = 0;
 			break;
 		}
-		m_TextAreaUser->Freeze();
+		m_LastSelectedTextCtrl->Freeze();
 
 		// Replace, no scroll
-		m_TextAreaUser->RemoveSelection();
-		m_TextAreaUser->AddText(a_ReplaceString);
+		m_LastSelectedTextCtrl->RemoveSelection();
+		m_LastSelectedTextCtrl->AddText(a_ReplaceString);
 
-		m_TextAreaUser->Thaw();
+		m_LastSelectedTextCtrl->Thaw();
 		ctrReplaced++;
 	}
 
 	return ctrReplaced;
+}
+
+void SavvyEditor::AppFrame::OnConvert(wxCommandEvent& a_Event)
+{
+	Savvy::ResultCode convertRes = Savvy::SAVVY_INVALID_FILE_PATH;
+	if (m_ConvertOptionsSet)
+	{
+		// Input Language
+		if (m_InputLang == GLSL_4_5_STRING)
+		{
+			m_FileConvertOptions.InputLang = Savvy::GLSL_4_5;
+			m_BlobFileConvertOptions.InputLang = Savvy::GLSL_4_5;
+		}
+		else if (m_InputLang == GLSL_4_5_NO_LOC_STRING)
+		{
+			m_FileConvertOptions.InputLang = Savvy::GLSL_NO_LOC;
+			m_BlobFileConvertOptions.InputLang = Savvy::GLSL_NO_LOC;
+		}
+		else if (m_InputLang == GLSL_4_5_NO_UBO_STRING)
+		{
+			m_FileConvertOptions.InputLang = Savvy::GLSL_NO_UBO;
+			m_BlobFileConvertOptions.InputLang = Savvy::GLSL_NO_UBO;
+		}
+		else if (m_InputLang == GLSL_4_5_NO_UBO_NO_LOC_STRING)
+		{
+			m_FileConvertOptions.InputLang = Savvy::GLSL_NO_UBO_NO_LOC;
+			m_BlobFileConvertOptions.InputLang = Savvy::GLSL_NO_UBO_NO_LOC;
+		}
+		else if (m_InputLang == HLSL_5_0_STRING)
+		{
+			m_FileConvertOptions.InputLang = Savvy::HLSL_5_0;
+			m_BlobFileConvertOptions.InputLang = Savvy::HLSL_5_0;
+		}
+		else
+		{
+			m_FileConvertOptions.InputLang = Savvy::INVALID_SHADER_LANG;
+			m_BlobFileConvertOptions.InputLang = Savvy::INVALID_SHADER_LANG;
+		}
+
+		// Output Language
+		if (m_OutputLang == GLSL_4_5_STRING)
+		{
+			m_FileConvertOptions.OutputLang = Savvy::GLSL_4_5;
+			m_BlobFileConvertOptions.OutputLang = Savvy::GLSL_4_5;
+		}
+		else if (m_OutputLang == GLSL_4_5_NO_LOC_STRING)
+		{
+			m_FileConvertOptions.OutputLang = Savvy::GLSL_NO_LOC;
+			m_BlobFileConvertOptions.OutputLang = Savvy::GLSL_NO_LOC;
+		}
+		else if (m_OutputLang == GLSL_4_5_NO_UBO_STRING)
+		{
+			m_FileConvertOptions.OutputLang = Savvy::GLSL_NO_UBO;
+			m_BlobFileConvertOptions.OutputLang = Savvy::GLSL_NO_UBO;
+		}
+		else if (m_OutputLang == GLSL_4_5_NO_UBO_NO_LOC_STRING)
+		{
+			m_FileConvertOptions.OutputLang = Savvy::GLSL_NO_UBO_NO_LOC;
+			m_BlobFileConvertOptions.OutputLang = Savvy::GLSL_NO_UBO_NO_LOC;
+		}
+		else if (m_OutputLang == HLSL_5_0_STRING)
+		{
+			m_FileConvertOptions.OutputLang = Savvy::HLSL_5_0;
+			m_BlobFileConvertOptions.OutputLang = Savvy::HLSL_5_0;
+		}
+		else
+		{
+			m_FileConvertOptions.OutputLang = Savvy::INVALID_SHADER_LANG;
+			m_BlobFileConvertOptions.OutputLang = Savvy::INVALID_SHADER_LANG;
+		}
+
+		// Shader Type
+		if (m_ShaderType == VERTEX_STRING)
+		{
+			m_FileConvertOptions.ShaderType = Savvy::VERTEX_SHADER;
+			m_BlobFileConvertOptions.ShaderType = Savvy::VERTEX_SHADER;
+		}
+		else if (m_ShaderType == FRAGMENT_STRING)
+		{
+			m_FileConvertOptions.ShaderType = Savvy::FRAGMENT_SHADER;
+			m_BlobFileConvertOptions.ShaderType = Savvy::FRAGMENT_SHADER;
+		}
+		else
+		{
+			m_FileConvertOptions.ShaderType = Savvy::INVALID_SHADER_TYPE;
+			m_BlobFileConvertOptions.ShaderType = Savvy::INVALID_SHADER_TYPE;
+		}
+
+		// Entry points
+		m_FileConvertOptions.InputEntryPoint = m_InputEntry.mb_str();
+		m_FileConvertOptions.OutputEntryPoint = m_OutputEntry.mb_str();
+
+		m_BlobFileConvertOptions.OutputEntryPoint = m_InputEntry.mb_str();
+		m_BlobFileConvertOptions.OutputEntryPoint = m_OutputEntry.mb_str();
+
+		if (m_CurrDocPath == DEFAULT_DOC_PATH)
+		{
+			// Input and output data
+			wxString currContents = m_TextAreaUser->GetValue();
+			std::string convertedString = currContents.ToStdString();
+			Savvy::Blob inputBlob(&convertedString[0], convertedString.size());
+			m_BlobFileConvertOptions.InputBlob = &inputBlob;
+			m_BlobFileConvertOptions.OutputPath = m_OutputDir.ToStdWstring().c_str();
+
+			convertRes = m_ShaderConverter->ConvertShaderFromBlobToFile(m_BlobFileConvertOptions);
+		}
+		else
+		{
+			// Input and output paths
+			m_FileConvertOptions.InputPath = m_CurrDocPath.ToStdWstring().c_str();
+			m_FileConvertOptions.OutputPath = m_OutputDir.ToStdWstring().c_str();
+
+			convertRes = m_ShaderConverter->ConvertShaderFromFileToFile(m_FileConvertOptions);
+		}
+
+		if (convertRes != Savvy::SAVVY_OK)
+		{
+			wxLogError(m_ShaderConverter->GetLastError());
+		}
+		else
+		{
+			SetupConvertedTextArea();
+			m_ConvertedTextArea->LoadFile(m_OutputDir);
+		}
+	}
+	else
+	{
+		OnConversionOptions(a_Event);
+	}
+}
+
+Savvy::ResultCode SavvyEditor::AppFrame::RegisterDefaultConverters(Savvy::ShaderConverter* converter)
+{
+	Savvy::ResultCode res;
+	res = converter->RegisterCustomShaderLang<Savvy::Internal::ScannerGLSL, Savvy::Internal::ParserGLSL, Savvy::Internal::DatabaseGLSL, Savvy::Internal::ConstructorHLSLToGLSL>(Savvy::GLSL_4_5, L".glsl");
+
+	if (res != Savvy::ResultCode::SAVVY_OK)
+		std::cerr << converter->GetLastError() << std::endl;
+
+	converter->RegisterCustomShaderLang<Savvy::Internal::ScannerGLSL, Savvy::Internal::ParserGLSL, Savvy::Internal::DatabaseGLSL, Savvy::Internal::ConstructorHLSLToGLSLNoLoc>(Savvy::GLSL_NO_LOC, L".glsl");
+
+	if (res != Savvy::ResultCode::SAVVY_OK)
+		std::cerr << converter->GetLastError() << std::endl;
+
+	converter->RegisterCustomShaderLang<Savvy::Internal::ScannerGLSL, Savvy::Internal::ParserGLSL, Savvy::Internal::DatabaseGLSL, Savvy::Internal::ConstructorHLSLToGLSLNoUBO>(Savvy::GLSL_NO_UBO, L".glsl");
+
+	if (res != Savvy::ResultCode::SAVVY_OK)
+		std::cerr << converter->GetLastError() << std::endl;
+
+	converter->RegisterCustomShaderLang<Savvy::Internal::ScannerGLSL, Savvy::Internal::ParserGLSL, Savvy::Internal::DatabaseGLSL, Savvy::Internal::ConstructorHLSLToGLSLNoUBONoLoc>(Savvy::GLSL_NO_UBO_NO_LOC, L".glsl");
+
+	if (res != Savvy::ResultCode::SAVVY_OK)
+		std::cerr << converter->GetLastError() << std::endl;
+
+	converter->RegisterCustomShaderLang<Savvy::Internal::ScannerHLSL, Savvy::Internal::ParserHLSL, Savvy::Internal::DatabaseHLSL, Savvy::Internal::ConstructorGLSLToHLSL>(Savvy::HLSL_5_0, L".hlsl");
+
+	return res;
+}
+
+Savvy::ResultCode SavvyEditor::AppFrame::RegisterDefaultShaderTypes(Savvy::ShaderConverter* converter)
+{
+	Savvy::ResultCode res;
+
+	res = converter->RegisterCustomShaderType(Savvy::INVALID_SHADER_LANG);
+
+	if (res != Savvy::ResultCode::SAVVY_OK)
+		std::cerr << converter->GetLastError() << std::endl;
+
+	res = converter->RegisterCustomShaderType(Savvy::FRAGMENT_SHADER);
+
+	if (res != Savvy::ResultCode::SAVVY_OK)
+		std::cerr << converter->GetLastError() << std::endl;
+
+	res = converter->RegisterCustomShaderType(Savvy::VERTEX_SHADER);
+
+	if (res != Savvy::ResultCode::SAVVY_OK)
+		std::cerr << converter->GetLastError() << std::endl;
+
+	return res;
+}
+
+void SavvyEditor::AppFrame::SetupConvertedTextArea()
+{
+	if (!m_ConvertedTextArea)
+	{
+		wxSize areaSize = GetClientSize();
+		areaSize.SetWidth(areaSize.GetWidth() / 2);
+		m_TextAreaUser->SetSize(areaSize);
+
+		// Create the text area
+		areaSize = GetClientSize();
+		areaSize.SetWidth(areaSize.GetWidth() / 2);
+		wxPoint point;
+		point.x = areaSize.GetWidth();
+		point.y = wxDefaultPosition.y;
+		m_ConvertedTextArea = new wxStyledTextCtrl(this, ID_TextAreaConverted, point, areaSize, wxTE_PROCESS_ENTER | wxTE_MULTILINE);
+		SetupSyntaxRules(m_ConvertedTextArea);
+		m_ConvertedTextArea->Connect(wxEVT_SET_FOCUS, (wxObjectEventFunction)&SavvyEditor::AppFrame::OnFocusEditorWindow, NULL, this);
+	}
+}
+
+void SavvyEditor::AppFrame::SetupSyntaxRules(wxStyledTextCtrl* a_Ctrl)
+{
+	// Set up the margins for the line numbers
+	a_Ctrl->StyleClearAll();
+	a_Ctrl->SetLexer(wxSTC_LEX_CPP);
+
+	a_Ctrl->SetMarginWidth(MARGIN_LINE_NUMBERS, MARGIN_LINE_NUMBERS_WIDTH);
+	a_Ctrl->StyleSetForeground(wxSTC_STYLE_LINENUMBER, wxColour(75, 75, 75));
+	a_Ctrl->StyleSetBackground(wxSTC_STYLE_LINENUMBER, wxColour(220, 220, 220));
+	a_Ctrl->SetMarginType(MARGIN_LINE_NUMBERS, wxSTC_MARGIN_NUMBER);
+
+
+	// ---- Enable code folding
+	a_Ctrl->SetMarginType(MARGIN_FOLD, wxSTC_MARGIN_SYMBOL);
+	a_Ctrl->SetMarginWidth(MARGIN_FOLD, MARGIN_FOLD_WIDTH);
+	a_Ctrl->SetMarginMask(MARGIN_FOLD, wxSTC_MASK_FOLDERS);
+	a_Ctrl->StyleSetBackground(MARGIN_FOLD, C_BLOCK_BACKGROUND_COLOR);
+	a_Ctrl->SetMarginSensitive(MARGIN_FOLD, true);
+
+	// Properties found from http://www.scintilla.org/SciTEDoc.html
+	a_Ctrl->SetProperty(wxT("fold"), wxT("1"));
+	a_Ctrl->SetProperty(wxT("fold.comment"), wxT("1"));
+	a_Ctrl->SetProperty(wxT("fold.compact"), wxT("1"));
+
+	a_Ctrl->MarkerDefine(wxSTC_MARKNUM_FOLDER, wxSTC_MARK_ARROW);
+	a_Ctrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDER, FOLDING_COLOR);
+	a_Ctrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDER, FOLDING_COLOR);
+
+	a_Ctrl->MarkerDefine(wxSTC_MARKNUM_FOLDEROPEN, wxSTC_MARK_ARROWDOWN);
+	a_Ctrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPEN, FOLDING_COLOR);
+	a_Ctrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPEN, FOLDING_COLOR);
+
+	a_Ctrl->MarkerDefine(wxSTC_MARKNUM_FOLDERSUB, wxSTC_MARK_EMPTY);
+	a_Ctrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDERSUB, FOLDING_COLOR);
+	a_Ctrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDERSUB, FOLDING_COLOR);
+
+	a_Ctrl->MarkerDefine(wxSTC_MARKNUM_FOLDEREND, wxSTC_MARK_ARROW);
+	a_Ctrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDEREND, FOLDING_COLOR);
+	a_Ctrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDEREND, _T("WHITE"));
+
+	a_Ctrl->MarkerDefine(wxSTC_MARKNUM_FOLDEROPENMID, wxSTC_MARK_ARROWDOWN);
+	a_Ctrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDEROPENMID, FOLDING_COLOR);
+	a_Ctrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDEROPENMID, _T("WHITE"));
+
+	a_Ctrl->MarkerDefine(wxSTC_MARKNUM_FOLDERMIDTAIL, wxSTC_MARK_EMPTY);
+	a_Ctrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDERMIDTAIL, FOLDING_COLOR);
+	a_Ctrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDERMIDTAIL, FOLDING_COLOR);
+
+	a_Ctrl->MarkerDefine(wxSTC_MARKNUM_FOLDERTAIL, wxSTC_MARK_EMPTY);
+	a_Ctrl->MarkerSetForeground(wxSTC_MARKNUM_FOLDERTAIL, FOLDING_COLOR);
+	a_Ctrl->MarkerSetBackground(wxSTC_MARKNUM_FOLDERTAIL, FOLDING_COLOR);
+	// ---- End of code folding part
+
+	a_Ctrl->SetWrapMode(wxSTC_WRAP_NONE);
+
+	a_Ctrl->Connect(wxEVT_STC_MARGINCLICK, wxStyledTextEventHandler(SavvyEditor::AppFrame::OnMarginClick), NULL, this);
+}
+
+void SavvyEditor::AppFrame::OnFocusEditorWindow(wxFocusEvent& a_Event)
+{
+	int eventId = a_Event.GetId();
+	if (eventId == ID_TextAreaConverted)
+	{
+		if (m_ConvertedTextArea)
+		{
+			m_LastSelectedTextCtrl = m_ConvertedTextArea;
+		}
+	}
+	else if (eventId == ID_TextAreaUser)
+	{
+		if (m_TextAreaUser)
+		{
+			m_LastSelectedTextCtrl = m_TextAreaUser;
+		}
+	}
+	a_Event.Skip(true);
+}
+
+void SavvyEditor::AppFrame::TriggerConvert()
+{
+	Savvy::ResultCode convertRes = Savvy::SAVVY_INVALID_FILE_PATH;
+	// Input Language
+	if (m_InputLang == GLSL_4_5_STRING)
+	{
+		m_FileConvertOptions.InputLang = Savvy::GLSL_4_5;
+		m_BlobFileConvertOptions.InputLang = Savvy::GLSL_4_5;
+	}
+	else if (m_InputLang == GLSL_4_5_NO_LOC_STRING)
+	{
+		m_FileConvertOptions.InputLang = Savvy::GLSL_NO_LOC;
+		m_BlobFileConvertOptions.InputLang = Savvy::GLSL_NO_LOC;
+	}
+	else if (m_InputLang == GLSL_4_5_NO_UBO_STRING)
+	{
+		m_FileConvertOptions.InputLang = Savvy::GLSL_NO_UBO;
+		m_BlobFileConvertOptions.InputLang = Savvy::GLSL_NO_UBO;
+	}
+	else if (m_InputLang == GLSL_4_5_NO_UBO_NO_LOC_STRING)
+	{
+		m_FileConvertOptions.InputLang = Savvy::GLSL_NO_UBO_NO_LOC;
+		m_BlobFileConvertOptions.InputLang = Savvy::GLSL_NO_UBO_NO_LOC;
+	}
+	else if (m_InputLang == HLSL_5_0_STRING)
+	{
+		m_FileConvertOptions.InputLang = Savvy::HLSL_5_0;
+		m_BlobFileConvertOptions.InputLang = Savvy::HLSL_5_0;
+	}
+	else
+	{
+		m_FileConvertOptions.InputLang = Savvy::INVALID_SHADER_LANG;
+		m_BlobFileConvertOptions.InputLang = Savvy::INVALID_SHADER_LANG;
+	}
+
+	// Output Language
+	if (m_OutputLang == GLSL_4_5_STRING)
+	{
+		m_FileConvertOptions.OutputLang = Savvy::GLSL_4_5;
+		m_BlobFileConvertOptions.OutputLang = Savvy::GLSL_4_5;
+	}
+	else if (m_OutputLang == GLSL_4_5_NO_LOC_STRING)
+	{
+		m_FileConvertOptions.OutputLang = Savvy::GLSL_NO_LOC;
+		m_BlobFileConvertOptions.OutputLang = Savvy::GLSL_NO_LOC;
+	}
+	else if (m_OutputLang == GLSL_4_5_NO_UBO_STRING)
+	{
+		m_FileConvertOptions.OutputLang = Savvy::GLSL_NO_UBO;
+		m_BlobFileConvertOptions.OutputLang = Savvy::GLSL_NO_UBO;
+	}
+	else if (m_OutputLang == GLSL_4_5_NO_UBO_NO_LOC_STRING)
+	{
+		m_FileConvertOptions.OutputLang = Savvy::GLSL_NO_UBO_NO_LOC;
+		m_BlobFileConvertOptions.OutputLang = Savvy::GLSL_NO_UBO_NO_LOC;
+	}
+	else if (m_OutputLang == HLSL_5_0_STRING)
+	{
+		m_FileConvertOptions.OutputLang = Savvy::HLSL_5_0;
+		m_BlobFileConvertOptions.OutputLang = Savvy::HLSL_5_0;
+	}
+	else
+	{
+		m_FileConvertOptions.OutputLang = Savvy::INVALID_SHADER_LANG;
+		m_BlobFileConvertOptions.OutputLang = Savvy::INVALID_SHADER_LANG;
+	}
+
+	// Shader Type
+	if (m_ShaderType == VERTEX_STRING)
+	{
+		m_FileConvertOptions.ShaderType = Savvy::VERTEX_SHADER;
+		m_BlobFileConvertOptions.ShaderType = Savvy::VERTEX_SHADER;
+	}
+	else if (m_ShaderType == FRAGMENT_STRING)
+	{
+		m_FileConvertOptions.ShaderType = Savvy::FRAGMENT_SHADER;
+		m_BlobFileConvertOptions.ShaderType = Savvy::FRAGMENT_SHADER;
+	}
+	else
+	{
+		m_FileConvertOptions.ShaderType = Savvy::INVALID_SHADER_TYPE;
+		m_BlobFileConvertOptions.ShaderType = Savvy::INVALID_SHADER_TYPE;
+	}
+
+	// Entry points
+	m_FileConvertOptions.InputEntryPoint = m_InputEntry.mb_str();
+	m_FileConvertOptions.OutputEntryPoint = m_OutputEntry.mb_str();
+
+	m_BlobFileConvertOptions.OutputEntryPoint = m_InputEntry.mb_str();
+	m_BlobFileConvertOptions.OutputEntryPoint = m_OutputEntry.mb_str();
+
+	if (m_CurrDocPath == DEFAULT_DOC_PATH)
+	{
+		// Input and output data
+		wxString currContents = m_TextAreaUser->GetValue();
+		std::string convertedString = currContents.ToStdString();
+		Savvy::Blob inputBlob(&convertedString[0], convertedString.size());
+		m_BlobFileConvertOptions.InputBlob = &inputBlob;
+		m_BlobFileConvertOptions.OutputPath = m_OutputDir.ToStdWstring().c_str();
+
+		convertRes = m_ShaderConverter->ConvertShaderFromBlobToFile(m_BlobFileConvertOptions);
+	}
+	else
+	{
+		// Input and output paths
+		m_FileConvertOptions.InputPath = m_CurrDocPath.ToStdWstring().c_str();
+		m_FileConvertOptions.OutputPath = m_OutputDir.ToStdWstring().c_str();
+
+		convertRes = m_ShaderConverter->ConvertShaderFromFileToFile(m_FileConvertOptions);
+	}
+
+	if (convertRes != Savvy::SAVVY_OK)
+	{
+		wxLogError(m_ShaderConverter->GetLastError());
+	}
+	else
+	{
+		SetupConvertedTextArea();
+		m_ConvertedTextArea->LoadFile(m_OutputDir);
+	}
+}
+
+void SavvyEditor::AppFrame::OnClassicView(wxCommandEvent& a_event)
+{
+	if (m_ConvertedTextArea)
+	{
+		m_ConvertedTextArea->Destroy();
+		m_ConvertedTextArea = NULL;
+
+		if (m_TextAreaUser)
+			m_TextAreaUser->SetSize(GetClientSize());
+	}
+}
+
+void SavvyEditor::AppFrame::OnSplitView(wxCommandEvent& a_event)
+{
+	if (!m_ConvertedTextArea)
+	{
+		SetupConvertedTextArea();
+	}
 }
