@@ -1,8 +1,10 @@
 # Savvy
-A Generic and Flexible Shader Cross Compiler Library/Tool.
+A Generic and Flexible Shader Cross Compiler Library/Tool, which also includes a text editor.
 
 # What is Savvy?
 Savvy is a library/tool which lets you convert shaders from and to different languages. Currently supported out of the box are the HLSL 5.0 (DirectX 11) and GLSL 4.5 (OpenGL) shader languages. However, the architecture is generic and easily extendable, which means anyone can write their own converter for their favourite shading language.
+
+The tool is under active development and now includes a GUI Editor in the style of Notepad++ which supports syntax highlighting, auto completion and automatic conversion of the above mentioned languages.
 
 # How to compile?
 Savvy uses Premake 5 (You can find it here: https://premake.github.io/) to generate the solution/project files needed to compile the project. Here's a step by step guide on how to generate the solution/project files for your favourite IDE:
@@ -27,7 +29,7 @@ The Sample is a project which shows different uses of of the Savvy library and d
 This is the bread and butter of the tool. This project contains all the Savvy functionality and implementation of the converters.
 
 ## Savvy Standalone
-This project is the standalone version of the tool. It is a simple console application which provides an out of the box functionality for anyone to convert shaders between GLSL and HLSL.
+This project is the standalone version of the tool, which is basically a GUI editor application. It includes the above mentioned Savvy project in order to provide the user with an interface for converting shaders.
 
 # More Documentation and Tutorials Coming Soon
 In the meantime, if you have any questions/suggestions you can always contact me at: 
