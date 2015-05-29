@@ -958,6 +958,7 @@ void SavvyEditor::AppFrame::OnConvert(wxCommandEvent& a_Event)
 		else
 		{
 			SetupConvertedTextArea();
+			m_ConvertedTextArea->ClearAll();
 			m_ConvertedTextArea->LoadFile(m_OutputDir);
 		}
 	}
@@ -1103,6 +1104,7 @@ void SavvyEditor::AppFrame::OnFocusEditorWindow(wxFocusEvent& a_Event)
 		if (m_ConvertedTextArea)
 		{
 			m_LastSelectedTextCtrl = m_ConvertedTextArea;
+			m_CurrFindPos = 0;
 		}
 	}
 	else if (eventId == ID_TextAreaUser)
@@ -1110,6 +1112,7 @@ void SavvyEditor::AppFrame::OnFocusEditorWindow(wxFocusEvent& a_Event)
 		if (m_TextAreaUser)
 		{
 			m_LastSelectedTextCtrl = m_TextAreaUser;
+			m_CurrFindPos = 0;
 		}
 	}
 	a_Event.Skip(true);
@@ -1233,6 +1236,7 @@ void SavvyEditor::AppFrame::TriggerConvert()
 	else
 	{
 		SetupConvertedTextArea();
+		m_ConvertedTextArea->ClearAll();
 		m_ConvertedTextArea->LoadFile(m_OutputDir);
 	}
 }
