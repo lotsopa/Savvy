@@ -45,10 +45,11 @@ Savvy::ResultCode FileToFile(Savvy::ShaderConverter* converter)
 {
 	Savvy::ResultCode res;
 	Savvy::FileConvertOptions options;
-	options.InputPath = L"../Converted/GLSL/MeshPhysical.frag.glsl";
-	options.OutputPath = L"../Converted/HLSL/MeshPhysical.frag.hlsl";
-	options.InputLang = Savvy::GLSL_4_5;
-	options.OutputLang = Savvy::HLSL_5_0;
+	options.InputPath = L"ForwardRendering.hlsl";
+	options.OutputPath = L"ForwardRendering.glsl";
+	options.InputLang = Savvy::HLSL_5_0;
+	options.OutputLang = Savvy::GLSL_4_5;
+	options.InputEntryPoint = "PS_main";
 	options.ShaderType = Savvy::FRAGMENT_SHADER;
 
 	res = converter->ConvertShaderFromFileToFile(options);

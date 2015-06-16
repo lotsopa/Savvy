@@ -717,7 +717,7 @@ Savvy::ResultCode Savvy::Internal::ConstructorHLSLToGLSL::ConstructFunctionsGLSL
 
 Savvy::ResultCode Savvy::Internal::ConstructorHLSLToGLSL::ConstructMainInnerFunctionGLSL(std::ostream& a_OutputStream)
 {
-	ResultCode res = ConstructGenericInnerFunctionGLSL(a_OutputStream, Key("main"));
+	ResultCode res = ConstructGenericInnerFunctionGLSL(a_OutputStream, m_InputEntry);
 	return res;
 }
 
@@ -768,7 +768,7 @@ Savvy::ResultCode Savvy::Internal::ConstructorHLSLToGLSL::ConstructGenericInnerF
 				it1->second.m_Name.SetString("g_" + it1->second.m_Name.GetString());
 			}
 
-			if (a_FuncName == "main")
+			if (a_FuncName == m_InputEntry)
 			{
 				if (word.m_Name == "return")
 				{
