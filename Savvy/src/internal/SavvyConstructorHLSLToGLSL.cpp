@@ -896,7 +896,7 @@ Savvy::ResultCode Savvy::Internal::ConstructorHLSLToGLSL::ConstructGenericInnerF
 				}
 			}
 
-			if (a_FuncName == "main" && m_CurrShader == FRAGMENT_SHADER)
+			if (a_FuncName == m_InputEntry && m_CurrShader == FRAGMENT_SHADER)
 			{
 				if (word.m_Name == "float4")
 				{
@@ -1290,7 +1290,7 @@ Savvy::ResultCode Savvy::Internal::ConstructorHLSLToGLSL::RemoveExtraFuncArgs( K
 			}
 			instructionIt--;
 
-			if (m_CurrFunction == "main")
+			if (m_CurrFunction == m_InputEntry)
 			{
 				instructionIt--;
 
@@ -1342,7 +1342,7 @@ Savvy::ResultCode Savvy::Internal::ConstructorHLSLToGLSL::RemoveExtraFuncArgs( K
 				}
 				instructionIt--;
 
-				if (m_CurrFunction == "main")
+				if (m_CurrFunction == m_InputEntry)
 				{
 					instructionIt--;
 
@@ -1392,8 +1392,8 @@ Savvy::ResultCode Savvy::Internal::ConstructorHLSLToGLSL::RetrieveOutputStructNa
 {
 	Database::WordMultiMap& instructionMap = m_Database->GetInstructionMap();
 
-	Database::WordMultiMap::iterator it1 = instructionMap.lower_bound("main");
-	Database::WordMultiMap::iterator it2 = instructionMap.upper_bound("main");
+	Database::WordMultiMap::iterator it1 = instructionMap.lower_bound(m_InputEntry);
+	Database::WordMultiMap::iterator it2 = instructionMap.upper_bound(m_InputEntry);
 
 	while (it1 != it2)
 	{
