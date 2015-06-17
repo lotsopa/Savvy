@@ -208,6 +208,7 @@ Savvy::ResultCode RegisterDefaultShaderTypes(Savvy::ShaderConverter* converter)
 	return res;
 }
 
+char* t[2];
 int main(int argc, char** argv)
 {
 	Savvy::ShaderConverter* converter = new Savvy::ShaderConverter();
@@ -225,8 +226,12 @@ int main(int argc, char** argv)
 	if (res != Savvy::ResultCode::SAVVY_OK)
 		std::cerr << converter->GetLastError() << std::endl;
 
+	// mcpp test
+	t[0] = argv[0];
+	t[1] = "-C";
+	int mcppRes = mcpp_lib_main(2, t, "ForwardRendering.hlsl", "output.txt");
 	// File to File example
-	res = FileToFile(converter);
+	//res = FileToFile(converter);
 
 	// Blob to Blob example
 	//res = BlobToBlob(converter);

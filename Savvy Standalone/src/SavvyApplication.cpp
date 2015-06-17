@@ -3,7 +3,7 @@
 
 #define DEFAULT_APP_WIDTH 800
 #define DEFAULT_APP_HEIGHT 600
-#define SPLASH_SCREEN_TIMEOUT_MS 2000
+#define SPLASH_SCREEN_TIMEOUT_MS 500
 
 // Register and start the application
 wxIMPLEMENT_APP(SavvyEditor::Application);

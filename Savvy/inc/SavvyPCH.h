@@ -42,4 +42,7 @@ System header files
 // C++11
 #include <functional>
 
+// mcpp
+#include <mcpp_lib.h>
+
 #endif // !SAVVY_PCH_H

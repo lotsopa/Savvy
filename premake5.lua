@@ -7,7 +7,8 @@ project "Savvy"
     location "Savvy"
     kind "StaticLib"
     language "C++"
-	includedirs { "Savvy/inc", "Savvy/inc/internal" }
+	includedirs { "Savvy/inc", "Savvy/inc/internal", "ext/mcpp/include" }
+	libdirs { "ext/mcpp/lib" }
     targetdir "Savvy/lib/%{cfg.buildcfg}"
 
     files { "Savvy/**.h", "Savvy/**.cpp" }
@@ -26,7 +27,8 @@ project "Sample"
 	kind "ConsoleApp"
 	language "C++"
 	links { "Savvy" }
-	includedirs { "Savvy/inc" }
+	includedirs { "Savvy/inc", "ext/mcpp/include" }
+	libdirs { "ext/mcpp/lib" }
 	targetdir "Sample/bin/%{cfg.buildcfg}"
 	debugdir "Sample/bin/%{cfg.buildcfg}"
 	
@@ -47,8 +49,8 @@ project "Savvy Standalone"
 	kind "WindowedApp"
 	language "C++"
 	links { "Savvy" }
-	includedirs { "Savvy/inc", "Savvy Standalone/inc", "ext/wxWidgets/include", "ext/wxWidgets/include/msvc" }
-	libdirs { "ext/wxWidgets/lib/vc_lib" }
+	includedirs { "Savvy/inc", "Savvy Standalone/inc", "ext/wxWidgets/include", "ext/wxWidgets/include/msvc", "ext/mcpp/include" }
+	libdirs { "ext/wxWidgets/lib/vc_lib", "ext/mcpp/lib" }
 	targetdir "Savvy Standalone/bin/%{cfg.buildcfg}"
 	debugdir "Savvy Standalone/bin/%{cfg.buildcfg}"
 	
