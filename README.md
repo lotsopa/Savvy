@@ -19,6 +19,9 @@ Savvy uses Premake 5 (You can find it here: https://premake.github.io/) to gener
 
 5. Open the Solution in your favourite IDE and press the compile button.
 
+## Important
+As of Version 2.0 the Savvy Standalone Project also depends on the wxWidgets GUI library. The library itself is included in the ext folder, however it is only compiled for Windows 32-bit and Visual Studio 2013. If you wish to compile the Savvy Standalone Version on another OS or with a different compiler, you must replace the provided wxWidgets with a compiled version for your particular Compiler/OS.
+
 # Project Breakdown
 After you've opened the solution, you should see three projects: Sample, Savvy and Savvy Standalone.
 
