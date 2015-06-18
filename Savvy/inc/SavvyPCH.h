@@ -45,4 +45,11 @@ System header files
 // mcpp
 #include <mcpp_lib.h>
 
+// make sure to link the proper mcpp library
+#ifdef DEBUG
+#pragma comment(lib, "mcpp.lib")
+#else
+#pragma comment(lib, "mcppd.lib")
+#endif
+
 #endif // !SAVVY_PCH_H

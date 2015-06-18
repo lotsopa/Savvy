@@ -14,11 +14,11 @@ project "Savvy"
     files { "Savvy/**.h", "Savvy/**.cpp" }
 
     filter "configurations:Debug"
-		defines { "DEBUG" }
+		defines { "DEBUG", "_CRT_SECURE_NO_WARNINGS" }
 		flags { "Symbols" }
 
     filter "configurations:Release"
-		defines { "NDEBUG" }
+		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS" }
 		optimize "On"
 		
 -- Sample Project
@@ -27,6 +27,7 @@ project "Sample"
 	kind "ConsoleApp"
 	language "C++"
 	links { "Savvy" }
+	linkoptions  { "/nodefaultlib:msvcrt.lib" }
 	includedirs { "Savvy/inc", "ext/mcpp/include" }
 	libdirs { "ext/mcpp/lib" }
 	targetdir "Sample/bin/%{cfg.buildcfg}"
@@ -35,13 +36,13 @@ project "Sample"
 	files { "Sample/**.h", "Sample/**.cpp" }
 
 	filter "configurations:Debug"
-		defines { "DEBUG" }
-		flags { "Symbols" }
+		defines { "DEBUG", "_CRT_SECURE_NO_WARNINGS" }
+		flags { "Symbols", "OmitDefaultLibrary" }
 
 	filter "configurations:Release"
-		defines { "NDEBUG" }
+		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS" }
 		optimize "On"
-		flags { "Symbols" }
+		flags { "Symbols", "OmitDefaultLibrary" }
 	  
 -- Savvy Standalone Project
 project "Savvy Standalone"
@@ -49,6 +50,7 @@ project "Savvy Standalone"
 	kind "WindowedApp"
 	language "C++"
 	links { "Savvy" }
+	linkoptions  { "/nodefaultlib:msvcrt.lib" }
 	includedirs { "Savvy/inc", "Savvy Standalone/inc", "ext/wxWidgets/include", "ext/wxWidgets/include/msvc", "ext/mcpp/include" }
 	libdirs { "ext/wxWidgets/lib/vc_lib", "ext/mcpp/lib" }
 	targetdir "Savvy Standalone/bin/%{cfg.buildcfg}"
@@ -57,10 +59,10 @@ project "Savvy Standalone"
 	files { "Savvy Standalone/**.h", "Savvy Standalone/**.cpp" }
 
 	filter "configurations:Debug"
-		defines { "DEBUG" }
-		flags { "Symbols", "Unicode", "WinMain" }
+		defines { "DEBUG", "_CRT_SECURE_NO_WARNINGS" }
+		flags { "Symbols", "Unicode", "WinMain", "OmitDefaultLibrary" }
 
 	filter "configurations:Release"
-		defines { "NDEBUG" }
+		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS" }
 		optimize "On"
-		flags { "Symbols", "Unicode", "WinMain" }
+		flags { "Symbols", "Unicode", "WinMain", "OmitDefaultLibrary" }

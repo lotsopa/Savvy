@@ -261,7 +261,7 @@ static char *   mkdep_mq;               /* Argument of -MQ option   */
 static char *   mkdep_mt;               /* Argument of -MT option   */
 
 /* sharp_filename is filename for #line line, used only in cur_file()   */
-static char *   sharp_filename = NULL;
+char *   sharp_filename = NULL;
 static char *   argv0;      /* argv[ 0] for usage() and version()   */
 static int      compat_mode;
                 /* "Compatible" mode of recursive macro expansion   */
@@ -1535,6 +1535,8 @@ found_name:
     if (open_include( filename, (delim == '"'), next)) {
         /* 'fname' should not be free()ed, it is used as file->         */
         /*      real_fname and has been registered into fnamelist[]     */
+		/*      deleted, because it causes a memory leak     */
+		free(fname);
         return  TRUE;
     }
 
@@ -1798,6 +1800,7 @@ static int  open_file(
         put_depend( fullname);          /* Output dependency line   */
 
 true:
+	free( fullname);
     return  TRUE;
 false:
     free( fullname);

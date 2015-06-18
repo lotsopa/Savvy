@@ -170,12 +170,13 @@ namespace Savvy
 		ParserClassMap m_ParserClassMap;
 		ConstructorClassMap m_ConstructorClassMap;
 		DatabaseClassMap m_DatabaseClassMap;
+		static const uint32 m_NumPreProcOpts = 2;
+		char8* m_PreprocessorOptions[m_NumPreProcOpts];
 
 		const bool ShaderTypeRegistered(uint32 a_ID);
 		const bool OutputShaderLangRegistered(uint32 a_ID);
 		const bool InputShaderLangRegistered(uint32 a_ID);
 
-		ResultCode ParseIncludes(FileConvertOptions& a_Options);
 		ResultCode ParseIncludes(BlobConvertOptions& a_Options);
 		ResultCode ParseIncludes(BlobFileConvertOptions& a_Options);
 		ResultCode ParseIncludes(FileBlobConvertOptions& a_Options);

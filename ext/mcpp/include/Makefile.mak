@@ -33,10 +33,10 @@ targets:
 	if not exist Release mkdir Release
 
 mcpp.lib: $(RELEASE_OBJS)
-	lib /nologo /out:mcpp.lib $(RELEASE_OBJS)
+	lib /nologo /out:../lib/mcpp.lib $(RELEASE_OBJS)
 
 mcppd.lib: $(DEBUG_OBJS)
-	lib /nologo /out:mcppd.lib $(DEBUG_OBJS)
+	lib /nologo /out:../lib/mcppd.lib $(DEBUG_OBJS)
 
 clean:
 	del /q $(RELEASE_OBJS)

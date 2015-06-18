@@ -37,6 +37,7 @@
 
 #include    "system.H"
 #include    "internal.H"
+extern char *   sharp_filename;
 
     /* Function pointer to expand_macro() functions.    */
     char *   (*expand_macro)( DEFBUF * defp, char * out, char * out_end
@@ -340,8 +341,23 @@ fatal_error_exit:
     /* Free malloced memory */
     if (mcpp_debug & MACRO_CALL) {
         if (in_file != stdin_name)
-            free( in_file);
+		{
+			free( in_file);
+			in_file = 0;
+		}
     }
+	
+	if(in_file)
+	{
+		free( in_file);
+		in_file = 0;
+	}
+	if (sharp_filename)
+	{
+		free(sharp_filename);
+		sharp_filename = NULL;
+	}
+	
     clear_filelist();
     clear_symtable();
 
