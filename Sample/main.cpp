@@ -45,8 +45,8 @@ Savvy::ResultCode FileToFile(Savvy::ShaderConverter* converter)
 {
 	Savvy::ResultCode res;
 	Savvy::FileConvertOptions options;
-	options.InputPath = L"ForwardRendering.hlsl";
-	options.OutputPath = L"ForwardRendering.glsl";
+	options.InputPath = L"output.txt";
+	options.OutputPath = L"bla.txt";
 	options.InputLang = Savvy::HLSL_5_0;
 	options.OutputLang = Savvy::GLSL_4_5;
 	options.InputEntryPoint = "PS_main";
@@ -227,11 +227,11 @@ int main(int argc, char** argv)
 		std::cerr << converter->GetLastError() << std::endl;
 
 	// mcpp test
-	t[0] = argv[0];
-	t[1] = "-C";
-	int mcppRes = mcpp_lib_main(2, t, "ForwardRendering.hlsl", "output.txt");
+	//t[0] = argv[0];
+	//t[1] = "-C";
+	//int mcppRes = mcpp_lib_main(2, t, "ForwardRendering.hlsl", "output.txt");
 	// File to File example
-	//res = FileToFile(converter);
+	res = FileToFile(converter);
 
 	// Blob to Blob example
 	//res = BlobToBlob(converter);

@@ -466,6 +466,7 @@ Savvy::ResultCode Savvy::Internal::ConstructorGLSLToHLSL::ConstructGlobalVarsHLS
 Savvy::ResultCode Savvy::Internal::ConstructorGLSLToHLSL::ConstructFunctionsHLSL(std::ostream& a_OutputStream)
 {
 	Database::FunctionList& funcList = m_Database->GetFunctionList();
+	Database::WordMultiMap& instructionMap = m_Database->GetInstructionMap();
 	ResultCode resCode;
 	if (funcList.empty())
 	{
@@ -577,6 +578,25 @@ Savvy::ResultCode Savvy::Internal::ConstructorGLSLToHLSL::ConstructFunctionsHLSL
 				}
 
 				a_OutputStream << varIt->m_Name.GetString();
+
+				// Do extra instructions
+				Key currKey = it->m_Name + "." + varIt->m_Name;
+				Database::WordMultiMap::iterator instructionIt1 = instructionMap.lower_bound(currKey);
+				Database::WordMultiMap::iterator instructionIt2 = instructionMap.upper_bound(currKey);
+
+				while (instructionIt1 != instructionIt2)
+				{
+					if (instructionIt1->second.m_Translate)
+					{
+						const Key& k = GetHLSLKeyword(instructionIt1->second.m_Name);
+						a_OutputStream << k.GetString() + " ";
+					}
+					else
+					{
+						a_OutputStream << instructionIt1->second.m_Name.GetString() + " ";
+					}
+					++instructionIt1;
+				}
 
 				if (varIt != it->m_Arguments.end() - 1)
 				{

@@ -1808,7 +1808,7 @@ return Savvy::SAVVY_PREPROCESSOR;
 case 12:
 YY_RULE_SETUP
 #line 50 "Flex\\ScannerGLSL.l"
-return Savvy::SAVVY_PREPROCESSOR;
+/* eat up line */
 	YY_BREAK
 case 13:
 YY_RULE_SETUP

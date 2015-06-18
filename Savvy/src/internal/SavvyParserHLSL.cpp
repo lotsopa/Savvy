@@ -314,6 +314,18 @@ Savvy::ResultCode Savvy::Internal::ParserHLSL::Parse_ID(std::string& a_TokenName
 		return SAVVY_SHADER_SYNTAX_ERROR;
 	}
 
+	// Add extra instructions on function argument declaration
+	if (m_CurrVarType == GLOBAL_VAR || m_CurrVarType == GLOBAL_VAR_INIT)
+	{
+		if (m_ScopeState == GLOBAL && m_State == OPERATION)
+		{
+			if (!m_LastIdentifierBeforeBracketOpen.IsEmpty())
+			{
+				m_Database->AddLocalInstruction(Key(a_TokenName), false, m_LastIdentifierBeforeBracketOpen + "." + m_LastIdentifier);
+			}
+		}
+	}
+
 	AddLocalInstruction(Key(a_TokenName), false, m_LastFunctionName);
 	AddGlobalInstruction(Key(a_TokenName), false, m_LastGlobalVarName);
 	return SAVVY_OK;
@@ -349,6 +361,18 @@ Savvy::ResultCode Savvy::Internal::ParserHLSL::Parse_DataType(std::string& a_Tok
 	{
 		m_LastError = "Could not parse data type " + a_TokenName + ". Possible syntax error.";
 		return SAVVY_SHADER_SYNTAX_ERROR;
+	}
+
+	// Add extra instructions on function argument declaration
+	if (m_CurrVarType == GLOBAL_VAR || m_CurrVarType == GLOBAL_VAR_INIT)
+	{
+		if (m_ScopeState == GLOBAL && m_State == OPERATION)
+		{
+			if (!m_LastIdentifierBeforeBracketOpen.IsEmpty())
+			{
+				m_Database->AddLocalInstruction(Key(a_TokenName), true, m_LastIdentifierBeforeBracketOpen + "." + m_LastIdentifier);
+			}
+		}
 	}
 
 	AddLocalInstruction(Key(a_TokenName), true, m_LastFunctionName);
@@ -411,6 +435,7 @@ Savvy::ResultCode Savvy::Internal::ParserHLSL::Parse_Operator(std::string& a_Tok
 		if (!m_LastIdentifierBeforeBracketOpen.IsEmpty())
 		{
 			m_LastTypeQualifierList.clear();
+			m_State = BASE;
 		}
 	}
 
@@ -423,6 +448,11 @@ Savvy::ResultCode Savvy::Internal::ParserHLSL::Parse_Operator(std::string& a_Tok
 				m_Database->AddGlobalVariable(m_LastIdentifier, m_LastTypeQualifierList, m_LastTemplateTypeList);
 				m_LastGlobalVarName = m_LastIdentifier;
 				m_CurrVarType = GLOBAL_VAR_INIT;
+			}
+			else if (!m_LastIdentifierBeforeBracketOpen.IsEmpty() && a_TokenName != ",")
+			{
+				// Add extra instructions on function argument declaration
+				m_Database->AddLocalInstruction(Key(a_TokenName), false, m_LastIdentifierBeforeBracketOpen + "." + m_LastIdentifier);
 			}
 		}
 	}
@@ -448,6 +478,18 @@ Savvy::ResultCode Savvy::Internal::ParserHLSL::Parse_IntValue(std::string& a_Tok
 		m_Database->AddLocalInstruction(Key(a_TokenName), false, m_LastBufferName + "." + m_LastIdentifier);
 	}
 
+	// Add extra instructions on function argument declaration
+	if (m_CurrVarType == GLOBAL_VAR || m_CurrVarType == GLOBAL_VAR_INIT)
+	{
+		if (m_ScopeState == GLOBAL)
+		{
+			if (!m_LastIdentifierBeforeBracketOpen.IsEmpty())
+			{
+				m_Database->AddLocalInstruction(Key(a_TokenName), false, m_LastIdentifierBeforeBracketOpen + "." + m_LastIdentifier);
+			}
+		}
+	}
+
 	AddLocalInstruction(Key(a_TokenName), false, m_LastFunctionName);
 	AddGlobalInstruction(Key(a_TokenName), false, m_LastGlobalVarName);
 	return SAVVY_OK;
@@ -464,6 +506,18 @@ Savvy::ResultCode Savvy::Internal::ParserHLSL::Parse_FloatValue(std::string& a_T
 	if (a_TokenName.back() == 'f')
 	{
 		a_TokenName.erase(a_TokenName.size() - 1);
+	}
+
+	// Add extra instructions on function argument declaration
+	if (m_CurrVarType == GLOBAL_VAR || m_CurrVarType == GLOBAL_VAR_INIT)
+	{
+		if (m_ScopeState == GLOBAL)
+		{
+			if (!m_LastIdentifierBeforeBracketOpen.IsEmpty())
+			{
+				m_Database->AddLocalInstruction(Key(a_TokenName), false, m_LastIdentifierBeforeBracketOpen + "." + m_LastIdentifier);
+			}
+		}
 	}
 
 	AddLocalInstruction(Key(a_TokenName), false, m_LastFunctionName);
@@ -794,6 +848,11 @@ Savvy::ResultCode Savvy::Internal::ParserHLSL::Parse_OpenSquareBracket(std::stri
 				m_LastGlobalVarName = m_LastIdentifier;
 				m_CurrVarType = GLOBAL_VAR_INIT;
 			}
+			else if (!m_LastIdentifierBeforeBracketOpen.IsEmpty())
+			{
+				// Add extra instructions on function argument declaration
+				m_Database->AddLocalInstruction(Key(a_TokenName), false, m_LastIdentifierBeforeBracketOpen + "." + m_LastIdentifier);
+			}
 		}
 	}
 	else if (m_CurrVarType == STRUCT_VAR)
@@ -822,6 +881,17 @@ Savvy::ResultCode Savvy::Internal::ParserHLSL::Parse_CloseSquareBracket(std::str
 		m_Database->AddLocalInstruction(Key(a_TokenName), false, m_LastBufferName + "." + m_LastIdentifier);
 	}
 
+	// Add extra instructions on function argument declaration
+	if (m_CurrVarType == GLOBAL_VAR || m_CurrVarType == GLOBAL_VAR_INIT)
+	{
+		if (m_ScopeState == GLOBAL)
+		{
+			if (!m_LastIdentifierBeforeBracketOpen.IsEmpty())
+			{
+				m_Database->AddLocalInstruction(Key(a_TokenName), false, m_LastIdentifierBeforeBracketOpen + "." + m_LastIdentifier);
+			}
+		}
+	}
 	AddLocalInstruction(Key(a_TokenName), false, m_LastFunctionName);
 	AddGlobalInstruction(Key(a_TokenName), false, m_LastGlobalVarName);
 	return SAVVY_OK;
