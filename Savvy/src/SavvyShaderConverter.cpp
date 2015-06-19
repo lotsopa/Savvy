@@ -175,6 +175,21 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromFileToBlob(FileBlobCo
 				tmpFileBuffer[i] = tempFileName[i];
 			}
 		}
+		else
+		{
+			sepFound = tempFileName.find("/");
+
+			if (sepFound != std::string::npos)
+			{
+				tempFileName = tempFileName.substr(sepFound);
+
+				for (uint32 i = 0; i < tempFileName.size(); i++)
+				{
+					tmpFileBuffer[i] = tempFileName[i];
+				}
+			}
+		}
+
 		uint32 inputPathSize = wcslen(a_Options.InputPath) + 1;
 		char8* inputFileName = new char8[inputPathSize];
 		wcstombs(inputFileName, a_Options.InputPath, inputPathSize);
@@ -714,6 +729,21 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromBlobToBlob(BlobConver
 			tmpFileBuffer1[i] = tempFileName[i];
 		}
 	}
+	else
+	{
+		sepFound = tempFileName.find("/");
+
+		if (sepFound != std::string::npos)
+		{
+			tempFileName = tempFileName.substr(sepFound);
+
+			for (uint32 i = 0; i < tempFileName.size(); i++)
+			{
+				tmpFileBuffer2[i] = tempFileName[i];
+			}
+		}
+	}
+
 	// remove generated separators
 	tmpnam(tmpFileBuffer2);
 	tempFileName = std::string(tmpFileBuffer2, L_tmpnam);
@@ -725,6 +755,20 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromBlobToBlob(BlobConver
 		for (uint32 i = 0; i < tempFileName.size(); i++)
 		{
 			tmpFileBuffer2[i] = tempFileName[i];
+		}
+	}
+	else
+	{
+		sepFound = tempFileName.find("/");
+
+		if (sepFound != std::string::npos)
+		{
+			tempFileName = tempFileName.substr(sepFound);
+
+			for (uint32 i = 0; i < tempFileName.size(); i++)
+			{
+				tmpFileBuffer2[i] = tempFileName[i];
+			}
 		}
 	}
 
@@ -1021,6 +1065,21 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromBlobToFile(BlobFileCo
 			tmpFileBuffer[i] = tempFileName[i];
 		}
 	}
+	else
+	{
+		sepFound = tempFileName.find("/");
+
+		if (sepFound != std::string::npos)
+		{
+			tempFileName = tempFileName.substr(sepFound);
+
+			for (uint32 i = 0; i < tempFileName.size(); i++)
+			{
+				tmpFileBuffer[i] = tempFileName[i];
+			}
+		}
+	}
+
 	uint32 outputPathSize = wcslen(a_Options.OutputPath) + 1;
 	char8* outputFileName = new char8[outputPathSize];
 	wcstombs(outputFileName, a_Options.OutputPath, outputPathSize);
