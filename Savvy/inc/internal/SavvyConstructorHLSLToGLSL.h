@@ -78,7 +78,6 @@ namespace Savvy
 			ResultCode ConstructFunctionsGLSL(std::ostream& a_OutputStream);
 			ResultCode ConstructMainInnerFunctionGLSL(std::ostream& a_OutputStream);
 			ResultCode ConstructGenericInnerFunctionGLSL(std::ostream& a_OutputStream, Key& a_FuncName);
-			ResultCode ConstructDefines(std::ostream& a_OutputStream);
 
 			bool GLSLEquivalentExists(const Key& a_Name);
 			const Key& GetGLSLKeyword(const Key& a_Name);

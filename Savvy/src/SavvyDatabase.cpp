@@ -255,7 +255,6 @@ void Savvy::Database::Reset()
 	m_FuncInstructionMap.clear();
 	m_FunctionList.clear();
 	m_SemanticMap.clear();
-	m_DefineList.clear();
 	m_GenericBufferIndex = 0;
 	m_UniformBufferIndex = 0;
 	m_InputsIndex = 0;
@@ -1046,12 +1045,6 @@ const Savvy::Key& Savvy::Database::GetSemantic(const Key& a_StructName, const Ke
 		it1++;
 	}
 	return a_VarName;
-}
-
-Savvy::ResultCode Savvy::Database::AddDefine(const Key& a_Def)
-{
-	m_DefineList.push_back(a_Def);
-	return SAVVY_OK;
 }
 
 const bool Savvy::Database::VariableWithNameExists(const Key& a_Name, const Key& a_FuncName)

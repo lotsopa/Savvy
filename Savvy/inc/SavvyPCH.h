@@ -32,6 +32,7 @@ System header files
 #include <string>
 #include <map>
 #include <iostream>
+#include <cstdio> // for mcpp related functionality
 #include <fstream>
 #include <vector>
 #include <cctype>

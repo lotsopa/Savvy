@@ -3,7 +3,6 @@
 #include "CustomParser.h"
 #include "CustomScanner.h"
 #include "CustomDatabase.h"
-#include <vld.h>
 
 enum CustomLang
 {
@@ -14,7 +13,7 @@ Savvy::ResultCode BlobToBlob(Savvy::ShaderConverter* converter)
 {
 	Savvy::ResultCode res;
 	// Load file in memory
-	std::ifstream is("../Converted/HLSL/ProceduralTerrain.frag.hlsl");
+	std::ifstream is("ForwardRendering.hlsl");
 	if (!is.is_open())
 	{
 		std::cout << "Error reading file" << std::endl;
@@ -30,6 +29,7 @@ Savvy::ResultCode BlobToBlob(Savvy::ShaderConverter* converter)
 	options.OutputBlob = &outputBlob;
 	options.InputLang = Savvy::HLSL_5_0;
 	options.OutputLang = Savvy::GLSL_4_5;
+	options.InputEntryPoint = "PS_main";
 	options.ShaderType = Savvy::FRAGMENT_SHADER;
 
 	res = converter->ConvertShaderFromBlobToBlob(options);
@@ -62,7 +62,7 @@ Savvy::ResultCode BlobToFile(Savvy::ShaderConverter* converter)
 {
 	Savvy::ResultCode res;
 	// Load file in memory
-	std::ifstream is("../Converted/HLSL/ProceduralTerrain.frag.hlsl");
+	std::ifstream is("ForwardRendering.hlsl");
 	if (!is.is_open())
 	{
 		std::cout << "Error reading file" << std::endl;
@@ -77,6 +77,7 @@ Savvy::ResultCode BlobToFile(Savvy::ShaderConverter* converter)
 	options.OutputPath = L"BlobToFileTest.txt";
 	options.InputLang = Savvy::HLSL_5_0;
 	options.OutputLang = Savvy::GLSL_4_5;
+	options.InputEntryPoint = "PS_main";
 	options.ShaderType = Savvy::FRAGMENT_SHADER;
 
 	res = converter->ConvertShaderFromBlobToFile(options);
@@ -91,10 +92,11 @@ Savvy::ResultCode FileToBlob(Savvy::ShaderConverter* converter)
 	// Create a blob with the loaded file in memory
 	Savvy::FileBlobConvertOptions options;
 	Savvy::Blob outputBlob;
-	options.InputPath = L"../Converted/HLSL/ProceduralTerrain.frag.hlsl";
+	options.InputPath = L"ForwardRendering.hlsl";
 	options.OutputBlob = &outputBlob;
 	options.InputLang = Savvy::HLSL_5_0;
 	options.OutputLang = Savvy::GLSL_4_5;
+	options.InputEntryPoint = "PS_main";
 	options.ShaderType = Savvy::FRAGMENT_SHADER;
 
 	res = converter->ConvertShaderFromFileToBlob(options);

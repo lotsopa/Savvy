@@ -1072,12 +1072,6 @@ void Savvy::Internal::ParserGLSL::HandleBuiltInVariable(Key& a_TokenName)
 
 Savvy::ResultCode Savvy::Internal::ParserGLSL::Parse_Preprocessor(std::string& a_TokenName)
 {
-	AddLocalInstruction(Key(a_TokenName + "\n\t"), false, m_LastFunctionName);
-	Key tokenKey = a_TokenName;
-	if (tokenKey.Contains("define") || tokenKey.Contains("error"))
-	{
-		m_Database->AddDefine(tokenKey);
-	}
 	return SAVVY_OK;
 }
 

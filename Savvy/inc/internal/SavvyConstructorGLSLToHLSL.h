@@ -54,7 +54,6 @@ namespace Savvy
 			ResultCode ConstructInnerFunctionHLSL(const Key& a_FuncName, std::ostream& a_OutputStream);
 			ResultCode ConstructMainFunctionHLSL(std::ostream& a_OutputStream);
 			ResultCode ConstructGenericFunctionHLSL(const Key& a_FuncName, std::ostream& a_OutputStream);
-			ResultCode ConstructDefines(std::ostream& a_OutputStream);
 			ResultCode ConstructGenericBuffersHLSL(std::ostream& a_OutputStream);
 
 			const bool IsEndOfLine(const Key& a_Key, const std::string& a_CurrLine);

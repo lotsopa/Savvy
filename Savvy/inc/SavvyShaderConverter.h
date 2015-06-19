@@ -177,10 +177,6 @@ namespace Savvy
 		const bool OutputShaderLangRegistered(uint32 a_ID);
 		const bool InputShaderLangRegistered(uint32 a_ID);
 
-		ResultCode ParseIncludes(BlobConvertOptions& a_Options);
-		ResultCode ParseIncludes(BlobFileConvertOptions& a_Options);
-		ResultCode ParseIncludes(FileBlobConvertOptions& a_Options);
-
 		void ResetConverters();
 
 		template<typename T>

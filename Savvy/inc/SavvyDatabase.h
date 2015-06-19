@@ -423,16 +423,6 @@ namespace Savvy
 		virtual const Key& GetOutputLangEquivalent(const Key& a_Name) = 0;
 
 		/*
-		Adds a preprocessor define statement to the defines list.
-		*/
-		ResultCode AddDefine(const Key& a_Def);
-
-		/*
-		Returns the list of preprocessor defines.
-		*/
-		SAVVY_INLINE KeyList& GetDefinesList() { return m_DefineList; }
-
-		/*
 		Attempts to find a variable with the specified name, declared anywhere. Returns true if the search succeeds, false otherwise.
 		*/
 		const bool VariableWithNameExists(const Key& a_Name, const Key& a_FuncName);
@@ -463,7 +453,6 @@ namespace Savvy
 		KeyVarMultiMap m_FunctionVariableMap;
 		WordMultiMap m_FuncInstructionMap;
 		FunctionList m_FunctionList;
-		KeyList m_DefineList;
 		SemanticMap m_SemanticMap;
 		uint32 m_GenericBufferIndex;
 		uint32 m_UniformBufferIndex;

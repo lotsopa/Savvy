@@ -159,9 +159,40 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromFileToBlob(FileBlobCo
 			return ResultCode::SAVVY_OK;
 		}
 
+		// run mcpp
+
+		// find a suitable file temp name
+		char tmpFileBuffer[L_tmpnam];
+		tmpnam(tmpFileBuffer);
+		std::string tempFileName(tmpFileBuffer, L_tmpnam);
+		uint32 sepFound = tempFileName.find("\\");
+		if (sepFound != std::string::npos)
+		{
+			tempFileName = tempFileName.substr(sepFound + 1);
+
+			for (uint32 i = 0; i < tempFileName.size(); i++)
+			{
+				tmpFileBuffer[i] = tempFileName[i];
+			}
+		}
+		uint32 inputPathSize = wcslen(a_Options.InputPath) + 1;
+		char8* inputFileName = new char8[inputPathSize];
+		wcstombs(inputFileName, a_Options.InputPath, inputPathSize);
+		int32 preprocessorResult = mcpp_lib_main(m_NumPreProcOpts, m_PreprocessorOptions, inputFileName, tmpFileBuffer);
+		delete[] inputFileName;
+
+		// Check if the preprocessor ran into any problems
+		if (preprocessorResult != 0)
+		{
+#ifndef SAVVY_NO_EXCEPTIONS
+			throw Exception("Preprocessor Error.");
+#endif
+			return ResultCode::SAVVY_PREPROCESSOR_ERROR;
+		}
+
 		// Create an input stream from a file path
 		std::ifstream inputStream;
-		inputStream.open(a_Options.InputPath, std::ios::in);
+		inputStream.open(tmpFileBuffer, std::ios::in);
 
 		if (!inputStream.is_open())
 		{
@@ -193,24 +224,6 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromFileToBlob(FileBlobCo
 				throw Exception(m_LastError);
 #endif
 				return ResultCode::SAVVY_UNRECOGNIZED_TOKEN;
-			}
-			else if (token == SAVVY_INCLUDE)
-			{
-				// Parse all includes
-				ResultCode resCode = ParseIncludes(a_Options);
-
-				if (resCode != SAVVY_OK)
-				{
-#ifndef SAVVY_NO_EXCEPTIONS
-					throw Exception(m_LastError);
-#endif
-					return resCode;
-				}
-
-				// Switch input stream in the lexical scanner back to the main file
-				m_Scanners[a_Options.InputLang]->SwitchInputStream(&inputStream);
-				token = m_Scanners[a_Options.InputLang]->GetNextToken();
-				continue;
 			}
 			std::string tokenName = m_Scanners[a_Options.InputLang]->GetLastTokenName();
 			parseResult = m_Parsers[a_Options.InputLang]->ParseToken(token, tokenName);
@@ -282,6 +295,9 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromFileToBlob(FileBlobCo
 		m_Parsers[a_Options.InputLang]->Reset();
 		m_Databases[a_Options.InputLang]->Reset();
 		m_ParsedIncludes.clear();
+
+		// delete the temp file
+		remove(tmpFileBuffer);
 
 		std::string& OutputString = outputStream.str();
 		a_Options.OutputBlob->SetData(OutputString.c_str(), OutputString.size());
@@ -679,7 +695,72 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromBlobToBlob(BlobConver
 		return SAVVY_OK;
 	}
 
-	std::string inputString(a_Options.InputBlob->GetRawDataPtr(), a_Options.InputBlob->GetDataSize());
+	// run mcpp
+
+	// find a suitable file temp name
+	char tmpFileBuffer1[L_tmpnam];
+	char tmpFileBuffer2[L_tmpnam];
+	tmpnam(tmpFileBuffer1);
+	std::string tempFileName(tmpFileBuffer1, L_tmpnam);
+
+	// remove generated separators
+	uint32 sepFound = tempFileName.find("\\");
+	if (sepFound != std::string::npos)
+	{
+		tempFileName = tempFileName.substr(sepFound + 1);
+
+		for (uint32 i = 0; i < tempFileName.size(); i++)
+		{
+			tmpFileBuffer1[i] = tempFileName[i];
+		}
+	}
+	// remove generated separators
+	tmpnam(tmpFileBuffer2);
+	tempFileName = std::string(tmpFileBuffer2, L_tmpnam);
+	sepFound = tempFileName.find("\\");
+	if (sepFound != std::string::npos)
+	{
+		tempFileName = tempFileName.substr(sepFound + 1);
+
+		for (uint32 i = 0; i < tempFileName.size(); i++)
+		{
+			tmpFileBuffer2[i] = tempFileName[i];
+		}
+	}
+
+	// Create a temp file
+	std::ofstream str(tmpFileBuffer1);
+	std::string mystring(a_Options.InputBlob->GetRawDataPtr(), a_Options.InputBlob->GetDataSize());
+	str << mystring;
+	str.close();
+
+	int32 preprocessorResult = mcpp_lib_main(m_NumPreProcOpts, m_PreprocessorOptions, tmpFileBuffer1, tmpFileBuffer2);
+
+	// Check if the preprocessor ran into any problems
+	if (preprocessorResult != 0)
+	{
+#ifndef SAVVY_NO_EXCEPTIONS
+		throw Exception("Preprocessor Error.");
+#endif
+		return ResultCode::SAVVY_PREPROCESSOR_ERROR;
+	}
+
+	// Load file in memory
+	std::ifstream is(tmpFileBuffer2);
+	if (!is.is_open())
+	{
+#ifndef SAVVY_NO_EXCEPTIONS
+		throw Exception("Preprocessor Error.");
+#endif
+		return ResultCode::SAVVY_PREPROCESSOR_ERROR;
+	}
+	std::string inputString(static_cast<std::stringstream const&>(std::stringstream() << is.rdbuf()).str());
+	is.close();
+
+	//remove temp files
+	remove(tmpFileBuffer1);
+	remove(tmpFileBuffer2);
+
 	std::istringstream inputStream;
 	inputStream.str(inputString);
 	inputString.clear();
@@ -711,19 +792,6 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromBlobToBlob(BlobConver
 			throw Exception(m_LastError);
 #endif
 			return ResultCode::SAVVY_UNRECOGNIZED_TOKEN;
-		}
-		else if (token == SAVVY_INCLUDE)
-		{
-			// Parse all includes
-			ResultCode resCode = ParseIncludes(a_Options);
-
-			if (resCode != SAVVY_OK)
-				return resCode;
-
-			// Switch input stream in the lexical scanner back to the main file
-			m_Scanners[a_Options.InputLang]->SwitchInputStream(&inputStream);
-			token = m_Scanners[a_Options.InputLang]->GetNextToken();
-			continue;
 		}
 		std::string tokenName = m_Scanners[a_Options.InputLang]->GetLastTokenName();
 		parseResult = m_Parsers[a_Options.InputLang]->ParseToken(token, tokenName);
@@ -937,7 +1005,59 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromBlobToFile(BlobFileCo
 		return SAVVY_OK;
 	}
 
-	std::string inputString(a_Options.InputBlob->GetRawDataPtr(), a_Options.InputBlob->GetDataSize());
+	// run mcpp
+
+	// find a suitable file temp name
+	char tmpFileBuffer[L_tmpnam];
+	tmpnam(tmpFileBuffer);
+	std::string tempFileName(tmpFileBuffer, L_tmpnam);
+	uint32 sepFound = tempFileName.find("\\");
+	if (sepFound != std::string::npos)
+	{
+		tempFileName = tempFileName.substr(sepFound + 1);
+
+		for (uint32 i = 0; i < tempFileName.size(); i++)
+		{
+			tmpFileBuffer[i] = tempFileName[i];
+		}
+	}
+	uint32 outputPathSize = wcslen(a_Options.OutputPath) + 1;
+	char8* outputFileName = new char8[outputPathSize];
+	wcstombs(outputFileName, a_Options.OutputPath, outputPathSize);
+
+	// Create a temp file
+	std::ofstream str(tmpFileBuffer);
+	std::string mystring(a_Options.InputBlob->GetRawDataPtr(), a_Options.InputBlob->GetDataSize());
+	str << mystring;
+	str.close();
+
+	int32 preprocessorResult = mcpp_lib_main(m_NumPreProcOpts, m_PreprocessorOptions, tmpFileBuffer, outputFileName);
+	delete[] outputFileName;
+
+	// Check if the preprocessor ran into any problems
+	if (preprocessorResult != 0)
+	{
+#ifndef SAVVY_NO_EXCEPTIONS
+		throw Exception("Preprocessor Error.");
+#endif
+		return ResultCode::SAVVY_PREPROCESSOR_ERROR;
+	}
+
+	// Load file in memory
+	std::ifstream is(a_Options.OutputPath);
+	if (!is.is_open())
+	{
+#ifndef SAVVY_NO_EXCEPTIONS
+		throw Exception("Preprocessor Error.");
+#endif
+		return ResultCode::SAVVY_PREPROCESSOR_ERROR;
+	}
+	std::string inputString(static_cast<std::stringstream const&>(std::stringstream() << is.rdbuf()).str());
+	is.close();
+
+	//remove temp file
+	remove(tmpFileBuffer);
+
 	std::istringstream inputStream;
 	inputStream.str(inputString);
 	inputString.clear();
@@ -969,19 +1089,6 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromBlobToFile(BlobFileCo
 			throw Exception(m_LastError);
 #endif
 			return ResultCode::SAVVY_UNRECOGNIZED_TOKEN;
-		}
-		else if (token == SAVVY_INCLUDE)
-		{
-			// Parse all includes
-			ResultCode resCode = ParseIncludes(a_Options);
-
-			if (resCode != SAVVY_OK)
-				return resCode;
-
-			// Switch input stream in the lexical scanner back to the main file
-			m_Scanners[a_Options.InputLang]->SwitchInputStream(&inputStream);
-			token = m_Scanners[a_Options.InputLang]->GetNextToken();
-			continue;
 		}
 		std::string tokenName = m_Scanners[a_Options.InputLang]->GetLastTokenName();
 		parseResult = m_Parsers[a_Options.InputLang]->ParseToken(token, tokenName);
@@ -1080,318 +1187,6 @@ Savvy::ResultCode Savvy::ShaderConverter::ConvertShaderFromBlobToFile(BlobFileCo
 const Savvy::char8* Savvy::ShaderConverter::GetLastError()
 {
 	return m_LastError.c_str();
-}
-
-Savvy::ResultCode Savvy::ShaderConverter::ParseIncludes(BlobConvertOptions& a_Options)
-{
-	static uint32 recursionDepth = 0;
-	// Get the string
-	uint32 token = m_Scanners[a_Options.InputLang]->GetNextToken();
-
-	// Check if it's legit
-	if (token != SAVVY_STRING)
-	{
-		uint32 linenum = m_Scanners[a_Options.InputLang]->GetLineNumber();
-		m_LastError = "Could not read include file string at line " + std::to_string(linenum) + ".";
-		return SAVVY_SHADER_SYNTAX_ERROR;
-	}
-
-	std::string tempname = m_Scanners[a_Options.InputLang]->GetLastTokenName();
-	std::wstring includeName;
-	includeName.assign(tempname.begin(), tempname.end());
-
-	// Format it correctly
-	includeName = includeName.substr(1, includeName.size() - 2);
-
-	// Check if we haven't already parsed this one
-	WideStringList::iterator it;
-	for (it = m_ParsedIncludes.begin(); it != m_ParsedIncludes.end(); ++it)
-	{
-		if ((*it) == includeName)
-			return SAVVY_OK;
-	}
-	m_ParsedIncludes.push_back(includeName);
-
-	// Create an input stream from a file path
-	std::ifstream inputStream;
-	inputStream.open(includeName, std::ios::in);
-
-	if (!inputStream.is_open())
-	{
-		// Failed to open file
-		m_LastError.assign("Failed to Open Include File inside shader");
-		return SAVVY_INVALID_FILE_PATH;
-	}
-
-	// Switch input stream in the lexical scanner
-	m_Scanners[a_Options.InputLang]->SwitchInputStream(&inputStream);
-
-	// Parse
-	token = m_Scanners[a_Options.InputLang]->GetNextToken();
-	ResultCode parseResult;
-	while (token != SAVVY_EOF)
-	{
-		if (token == SAVVY_UNKNOWN_TOKEN)
-		{
-			uint32 linenum = m_Scanners[a_Options.InputLang]->GetLineNumber();
-			m_LastError.assign("Error while parsing include file.");
-			m_LastError.append("Unrecognized token at line " + std::to_string(linenum) + ".");
-			return ResultCode::SAVVY_UNRECOGNIZED_TOKEN;
-		}
-		else if (token == SAVVY_INCLUDE)
-		{
-			if (recursionDepth > SAVVY_MAX_INCLUDE_RECURSION_DEPTH)
-			{
-				m_LastError.assign("Error while parsing include file.");
-				m_LastError.append("Maximum recursion depth exceeded.");
-				return SAVVY_MAX_RECURSION_DEPTH_EXCEEDED;
-			}
-
-			// Parse all includes
-			ResultCode resCode = ParseIncludes(a_Options);
-
-			if (resCode != SAVVY_OK)
-				return resCode;
-
-			// Switch input stream in the lexical scanner back to the main file
-			m_Scanners[a_Options.InputLang]->SwitchInputStream(&inputStream);
-			token = m_Scanners[a_Options.InputLang]->GetNextToken();
-			continue;
-		}
-		std::string tokenName = m_Scanners[a_Options.InputLang]->GetLastTokenName();
-		parseResult = m_Parsers[a_Options.InputLang]->ParseToken(token, tokenName);
-
-		if (parseResult != SAVVY_OK)
-		{
-			std::string err;
-			err.assign("Syntax error while parsing the token: " + tokenName + ".");
-			m_LastError.assign(err.begin(), err.end());
-			m_Parsers[a_Options.InputLang]->Reset();
-			m_Databases[a_Options.InputLang]->Reset();
-			return parseResult;
-		}
-
-		token = m_Scanners[a_Options.InputLang]->GetNextToken();
-	}
-
-	inputStream.close();
-	recursionDepth++;
-	return SAVVY_OK;
-}
-
-Savvy::ResultCode Savvy::ShaderConverter::ParseIncludes(BlobFileConvertOptions& a_Options)
-{
-	static uint32 recursionDepth = 0;
-	// Get the string
-	uint32 token = m_Scanners[a_Options.InputLang]->GetNextToken();
-
-	// Check if it's legit
-	if (token != SAVVY_STRING)
-	{
-		uint32 linenum = m_Scanners[a_Options.InputLang]->GetLineNumber();
-		m_LastError = "Could not read include file string at line " + std::to_string(linenum) + ".";
-		return SAVVY_SHADER_SYNTAX_ERROR;
-	}
-
-	std::string tempname = m_Scanners[a_Options.InputLang]->GetLastTokenName();
-	std::wstring includeName;
-	includeName.assign(tempname.begin(), tempname.end());
-
-	// Format it correctly
-	includeName = includeName.substr(1, includeName.size() - 2);
-
-	// Check if we haven't already parsed this one
-	WideStringList::iterator it;
-	for (it = m_ParsedIncludes.begin(); it != m_ParsedIncludes.end(); ++it)
-	{
-		if ((*it) == includeName)
-			return SAVVY_OK;
-	}
-	m_ParsedIncludes.push_back(includeName);
-
-	// Create an input stream from a file path
-	std::ifstream inputStream;
-	inputStream.open(includeName, std::ios::in);
-
-	if (!inputStream.is_open())
-	{
-		// Failed to open file
-		m_LastError.assign("Failed to Open Include File inside shader");
-		return SAVVY_INVALID_FILE_PATH;
-	}
-
-	// Switch input stream in the lexical scanner
-	m_Scanners[a_Options.InputLang]->SwitchInputStream(&inputStream);
-
-	// Parse
-	token = m_Scanners[a_Options.InputLang]->GetNextToken();
-	ResultCode parseResult;
-	while (token != SAVVY_EOF)
-	{
-		if (token == SAVVY_UNKNOWN_TOKEN)
-		{
-			uint32 linenum = m_Scanners[a_Options.InputLang]->GetLineNumber();
-			m_LastError.assign("Error while parsing include file.");
-			m_LastError.append("Unrecognized token at line " + std::to_string(linenum) + ".");
-			return ResultCode::SAVVY_UNRECOGNIZED_TOKEN;
-		}
-		else if (token == SAVVY_INCLUDE)
-		{
-			if (recursionDepth > SAVVY_MAX_INCLUDE_RECURSION_DEPTH)
-			{
-				m_LastError.assign("Error while parsing include file.");
-				m_LastError.append("Maximum recursion depth exceeded.");
-				return SAVVY_MAX_RECURSION_DEPTH_EXCEEDED;
-			}
-
-			// Parse all includes
-			ResultCode resCode = ParseIncludes(a_Options);
-
-			if (resCode != SAVVY_OK)
-				return resCode;
-
-			// Switch input stream in the lexical scanner back to the main file
-			m_Scanners[a_Options.InputLang]->SwitchInputStream(&inputStream);
-			token = m_Scanners[a_Options.InputLang]->GetNextToken();
-			continue;
-		}
-		std::string tokenName = m_Scanners[a_Options.InputLang]->GetLastTokenName();
-		parseResult = m_Parsers[a_Options.InputLang]->ParseToken(token, tokenName);
-
-		if (parseResult != SAVVY_OK)
-		{
-			std::string err;
-			err.assign("Syntax error while parsing the token: " + tokenName + ".");
-			m_LastError.assign(err.begin(), err.end());
-			m_Parsers[a_Options.InputLang]->Reset();
-			m_Databases[a_Options.InputLang]->Reset();
-			return parseResult;
-		}
-
-		token = m_Scanners[a_Options.InputLang]->GetNextToken();
-	}
-
-	inputStream.close();
-	recursionDepth++;
-	return SAVVY_OK;
-}
-
-Savvy::ResultCode Savvy::ShaderConverter::ParseIncludes(FileBlobConvertOptions& a_Options)
-{
-	static uint32 recursionDepth = 0;
-	// Get the string
-	uint32 token = m_Scanners[a_Options.InputLang]->GetNextToken();
-
-	// Check if it's legit
-	if (token != SAVVY_STRING)
-	{
-		uint32 linenum = m_Scanners[a_Options.InputLang]->GetLineNumber();
-		m_LastError = "Could not read include file string at line " + std::to_string(linenum) + ".";
-		return SAVVY_SHADER_SYNTAX_ERROR;
-	}
-
-	std::string tempname = m_Scanners[a_Options.InputLang]->GetLastTokenName();
-	std::wstring includeName;
-	includeName.assign(tempname.begin(), tempname.end());
-
-	// Format it correctly
-	includeName = includeName.substr(1, includeName.size() - 2);
-
-	// Check if we haven't already parsed this one
-	WideStringList::iterator it;
-	for (it = m_ParsedIncludes.begin(); it != m_ParsedIncludes.end(); ++it)
-	{
-		if ((*it) == includeName)
-			return SAVVY_OK;
-	}
-	m_ParsedIncludes.push_back(includeName);
-
-	// Create an input stream from a file path
-	std::ifstream inputStream;
-	inputStream.open(includeName, std::ios::in);
-
-	if (!inputStream.is_open())
-	{
-		// Try by merging the path of the current shader
-		std::wstring path(a_Options.InputPath);
-		uint32 lastDir = path.rfind(L"\\");
-
-		if (lastDir != std::wstring::npos)
-		{
-			std::wstring newPath = path.substr(0, lastDir + 1) + includeName;
-			inputStream.open(newPath, std::ios::in);
-
-			if (!inputStream.is_open())
-			{
-				// Failed to open file
-				m_LastError.assign("The input file path");
-				m_LastError.append(" is invalid.");
-				return SAVVY_INVALID_FILE_PATH;
-			}
-		}
-		else
-		{
-			// Failed to open file
-			m_LastError.assign("The input file path");
-			m_LastError.append(" is invalid.");
-			return SAVVY_INVALID_FILE_PATH;
-		}
-	}
-
-	// Switch input stream in the lexical scanner
-	m_Scanners[a_Options.InputLang]->SwitchInputStream(&inputStream);
-
-	// Parse
-	token = m_Scanners[a_Options.InputLang]->GetNextToken();
-	ResultCode parseResult;
-	while (token != SAVVY_EOF)
-	{
-		if (token == SAVVY_UNKNOWN_TOKEN)
-		{
-			uint32 linenum = m_Scanners[a_Options.InputLang]->GetLineNumber();
-			m_LastError.assign("Error while parsing include file.");
-			m_LastError.append("Unrecognized token at line " + std::to_string(linenum) + ".");
-			return ResultCode::SAVVY_UNRECOGNIZED_TOKEN;
-		}
-		else if (token == SAVVY_INCLUDE)
-		{
-			if (recursionDepth > SAVVY_MAX_INCLUDE_RECURSION_DEPTH)
-			{
-				m_LastError.assign("Error while parsing include file.");
-				m_LastError.append("Maximum recursion depth exceeded.");
-				return SAVVY_MAX_RECURSION_DEPTH_EXCEEDED;
-			}
-
-			// Parse all includes
-			ResultCode resCode = ParseIncludes(a_Options);
-
-			if (resCode != SAVVY_OK)
-				return resCode;
-
-			// Switch input stream in the lexical scanner back to the main file
-			m_Scanners[a_Options.InputLang]->SwitchInputStream(&inputStream);
-			token = m_Scanners[a_Options.InputLang]->GetNextToken();
-			continue;
-		}
-		std::string tokenName = m_Scanners[a_Options.InputLang]->GetLastTokenName();
-		parseResult = m_Parsers[a_Options.InputLang]->ParseToken(token, tokenName);
-
-		if (parseResult != SAVVY_OK)
-		{
-			std::string err;
-			err.assign("Syntax error while parsing the token: " + tokenName + ".");
-			m_LastError.assign(err.begin(), err.end());
-			m_Parsers[a_Options.InputLang]->Reset();
-			m_Databases[a_Options.InputLang]->Reset();
-			return parseResult;
-		}
-
-		token = m_Scanners[a_Options.InputLang]->GetNextToken();
-	}
-
-	inputStream.close();
-	recursionDepth++;
-	return SAVVY_OK;
 }
 
 Savvy::ResultCode Savvy::ShaderConverter::RegisterCustomShaderType(uint32 a_ID)

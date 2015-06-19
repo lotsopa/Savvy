@@ -1540,31 +1540,9 @@ bool Savvy::Internal::ConstructorGLSLToHLSL::IsVarMatrix(std::string a_VarName)
 	return false;
 }
 
-Savvy::ResultCode Savvy::Internal::ConstructorGLSLToHLSL::ConstructDefines(std::ostream& a_OutputStream)
-{
-	Database::KeyList& defineList = m_Database->GetDefinesList();
-	Database::KeyList::iterator it;
-
-	for (it = defineList.begin(); it != defineList.end(); ++it)
-	{
-		a_OutputStream << (*it).GetString() << std::endl;
-	}
-	a_OutputStream << "\n";
-	return SAVVY_OK;
-}
-
 Savvy::ResultCode Savvy::Internal::ConstructorGLSLToHLSL::ConstructVertexOrFragment(std::ostream& a_OutputStream)
 {
 	ResultCode res;
-
-	// Construct defines
-	res = ConstructDefines(a_OutputStream);
-
-	if (res != SAVVY_OK)
-	{
-		m_LastError.append("Error while constructing defines.");
-		return res;
-	}
 
 	// Construct Structures
 	res = ConstructStructsHLSL(a_OutputStream);

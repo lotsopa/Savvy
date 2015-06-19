@@ -1177,30 +1177,9 @@ const bool Savvy::Internal::ConstructorHLSLToGLSL::HandleBuiltInSemantic(Key& a_
 	return false;
 }
 
-Savvy::ResultCode Savvy::Internal::ConstructorHLSLToGLSL::ConstructDefines(std::ostream& a_OutputStream)
-{
-	Database::KeyList& defineList = m_Database->GetDefinesList();
-	Database::KeyList::iterator it;
-
-	for (it = defineList.begin(); it != defineList.end(); ++it)
-	{
-		a_OutputStream << (*it).GetString() << std::endl;
-	}
-	a_OutputStream << "\n";
-	return SAVVY_OK;
-}
-
 Savvy::ResultCode Savvy::Internal::ConstructorHLSLToGLSL::ConstructVertexOrFragment(std::ostream& a_OutputStream)
 {
 	ResultCode res;
-
-	res = ConstructDefines(a_OutputStream);
-
-	if (res != SAVVY_OK)
-	{
-		m_LastError.append("Error while constructing defines.");
-		return res;
-	}
 
 	// Construct Structures
 	res = ConstructStructsGLSL(a_OutputStream);
