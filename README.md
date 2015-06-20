@@ -30,7 +30,7 @@ All dependencies are included in the ext folder, however they are only compiled 
 
 2. Open README.md
 
-3. Follow instructions
+3. Follow the instructions
 
 # How to compile
 Savvy uses Premake 5 (You can find it here: https://premake.github.io/) to generate the solution/project files needed to compile the project. Here's a step by step guide on how to generate the solution/project files for your favourite IDE:
