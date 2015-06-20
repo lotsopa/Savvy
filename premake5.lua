@@ -27,7 +27,6 @@ project "Sample"
 	kind "ConsoleApp"
 	language "C++"
 	links { "Savvy" }
-	linkoptions  { "/nodefaultlib:msvcrt.lib" }
 	includedirs { "Savvy/inc", "ext/mcpp/include" }
 	libdirs { "ext/mcpp/lib" }
 	targetdir "Sample/bin/%{cfg.buildcfg}"
@@ -37,12 +36,12 @@ project "Sample"
 
 	filter "configurations:Debug"
 		defines { "DEBUG", "_CRT_SECURE_NO_WARNINGS" }
-		flags { "Symbols", "OmitDefaultLibrary" }
+		flags { "Symbols" }
 
 	filter "configurations:Release"
 		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS" }
 		optimize "On"
-		flags { "Symbols", "OmitDefaultLibrary" }
+		flags { "Symbols" }
 	  
 -- Savvy Standalone Project
 project "Savvy Standalone"
@@ -50,7 +49,6 @@ project "Savvy Standalone"
 	kind "WindowedApp"
 	language "C++"
 	links { "Savvy" }
-	linkoptions  { "/nodefaultlib:msvcrt.lib" }
 	includedirs { "Savvy/inc", "Savvy Standalone/inc", "ext/wxWidgets/include", "ext/wxWidgets/include/msvc", "ext/mcpp/include" }
 	libdirs { "ext/wxWidgets/lib/vc_lib", "ext/mcpp/lib" }
 	targetdir "Savvy Standalone/bin/%{cfg.buildcfg}"
@@ -60,9 +58,9 @@ project "Savvy Standalone"
 
 	filter "configurations:Debug"
 		defines { "DEBUG", "_CRT_SECURE_NO_WARNINGS" }
-		flags { "Symbols", "Unicode", "WinMain", "OmitDefaultLibrary" }
+		flags { "Symbols", "Unicode", "WinMain" }
 
 	filter "configurations:Release"
 		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS" }
 		optimize "On"
-		flags { "Symbols", "Unicode", "WinMain", "OmitDefaultLibrary" }
+		flags { "Symbols", "Unicode", "WinMain" }

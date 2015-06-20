@@ -26,7 +26,7 @@ DEBUG_OBJS = Debug\directive.obj \
 {.\}.c{Release}.obj::
 	$(CC) /MD /O2 /DNDEBUG /c /FoRelease\ $<
 
-all: targets mcpp.lib mcppd.lib
+all: targets mcppd.lib mcpp.lib
 
 targets:
 	if not exist Debug mkdir Debug
