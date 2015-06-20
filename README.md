@@ -18,13 +18,18 @@ All dependencies are included in the ext folder, however they are only compiled 
 
 ### WxWidgtets
 1. Go to https://www.wxwidgets.org/
+
 2. Download the source package of the latest release (At the time of writing - version 3.0.2)
+
 3. Follow the instruction on the wxWidgets Website to build the UNICODE(Very important) version of the library and link against it.
+
 4. Copy and Paste the library you just built in the ext/wxWidgets/lib folder. (do the same for the include folder as well, if you used a newer version of wxWidgets)
 
 ### MCPP
 1. Navigate to ext/mcpp/include
+
 2. Open README.md
+
 3. Follow instructions
 
 # How to compile
