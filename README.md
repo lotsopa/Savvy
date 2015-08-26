@@ -8,8 +8,10 @@ The tool is under active development and from version 2.0 onward, includes a GUI
 
 # Dependencies
 As of Version 2.0, Savvy depends on:
-1. wxWidgets - A GUI library which is used by the Savvy Standalone project ONLY.
-2. mcpp - A C/C++ Preprocessor used by the tool in order to translate preprocessor directives and includes.
+
+1. wxWidgets - A GUI library which is used by the Savvy Standalone project ONLY
+
+2. mcpp - A C/C++ Preprocessor used by the tool in order to translate preprocessor directives and includes
 
 ## Important
 All dependencies are included in the ext folder, however they are only compiled for Windows 32-bit and Visual Studio 2013. If you wish to compile Savvy on another OS or with a different compiler, you must replace the provided compiled libraries with a compiled version for your particular Compiler/OS.
