@@ -58,8 +58,3 @@ This is the bread and butter of the tool. This project contains all the Savvy fu
 
 ## Savvy Standalone
 This project is the standalone version of the tool, which is basically a GUI editor application. It includes the above mentioned Savvy project in order to provide the user with an interface for converting shaders.
-
-# More Documentation and Tutorials Coming Soon
-In the meantime, if you have any questions/suggestions you can always contact me at: 
-
-apostol_dadachev[at]yahoo.com or Twitter: @ApostolDadachev
